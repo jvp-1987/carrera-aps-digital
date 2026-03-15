@@ -181,8 +181,8 @@ export default function HojaVidaPDF({ employee }) {
       const fechaEmision = `Emitido: ${new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}`;
       doc.text(fechaEmision, pw - mr - doc.getTextWidth(fechaEmision), 33);
 
-      // Línea separadora dorada
-      doc.setDrawColor(251, 191, 36);
+      // Línea separadora celeste
+      doc.setDrawColor(100, 160, 230);
       doc.setLineWidth(0.8);
       doc.line(0, 36, pw, 36);
       doc.setLineWidth(0.2);

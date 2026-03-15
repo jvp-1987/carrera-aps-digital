@@ -14,6 +14,7 @@ import EmployeeProfile from '@/pages/EmployeeProfile';
 import TrainingModule from '@/pages/TrainingModule';
 import Resolutions from '@/pages/Resolutions';
 import Alerts from '@/pages/Alerts';
+import BudgetProjection from '@/pages/BudgetProjection';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

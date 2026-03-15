@@ -34,7 +34,7 @@ export default function ExperienceTab({ employee }) {
   const effectiveDays = calculateEffectiveDays(periods, totalLeaveDays);
   const bienios = calculateBienios(effectiveDays);
   const bienioPoints = calculateBienioPoints(employee.category, bienios);
-  const nextBienioDate = calculateNextBienioDate(employee.hire_date, totalLeaveDays, bienios);
+  const nextBienioDate = calculateNextBienioDate(periods, totalLeaveDays, bienios);
 
   const createPeriod = useMutation({
     mutationFn: data => base44.entities.ServicePeriod.create(data),
@@ -53,7 +53,7 @@ export default function ExperienceTab({ employee }) {
     const eDays = calculateEffectiveDays(allPeriods, tLeave);
     const b = calculateBienios(eDays);
     const bp = calculateBienioPoints(employee.category, b);
-    const nbd = calculateNextBienioDate(employee.hire_date, tLeave, b);
+    const nbd = calculateNextBienioDate(allPeriods, tLeave, b);
     
     await base44.entities.Employee.update(employee.id, {
       total_experience_days: eDays,

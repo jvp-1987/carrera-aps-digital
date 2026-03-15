@@ -8,39 +8,14 @@
 // Categoría B: 1°-2°=576/bienio, 3°-4°=504/bienio, ..., 10°-15°=360/bienio
 // Categoría C-F: 1°-3°=504/bienio, 4°-12°=432/bienio, 13°-15°=360/bienio
 
-function buildBienioTable(increments) {
-  // increments: array of { count, points } — builds cumulative table
-  const table = [];
-  let cumulative = 0;
-  for (const { count, points } of increments) {
-    for (let i = 0; i < count; i++) {
-      cumulative += points;
-      table.push(Math.min(cumulative, MAX_BIENIO_POINTS));
-    }
-  }
-  return table;
-}
+export const MAX_BIENIO_POINTS = 99999;
 
-export const MAX_BIENIO_POINTS = 6480;
-
-// Cumulative points after each bienio (index 0 = after bienio 1)
+// Puntaje ACUMULADO por bienio — tabla oficial Ley 19.378
+// Fuente: Datos estructurados hoja de cálculo oficial
 const BIENIO_POINTS_TABLE = {
-  A: buildBienioTable([
-    { count: 1, points: 1800 },
-    { count: 9, points: 504 },  // bienios 2-10
-    { count: 5, points: 216 },  // bienios 11-15
-  ]),
-  B: buildBienioTable([
-    { count: 2, points: 576 },
-    { count: 2, points: 504 },
-    { count: 5, points: 432 },  // bienios 5-9
-    { count: 6, points: 360 },  // bienios 10-15
-  ]),
-  'C-F': buildBienioTable([
-    { count: 3, points: 504 },
-    { count: 9, points: 432 },
-    { count: 3, points: 360 },
-  ]),
+  A: [1800, 2304, 2808, 3168, 3528, 3888, 4248, 4608, 4968, 5184, 5400, 5616, 5832, 6048, 6264],
+  B: [576, 1152, 1656, 2160, 2592, 3024, 3456, 3888, 4320, 4680, 5040, 5400, 5760, 6120, 6480],
+  'C-F': [504, 1008, 1512, 1944, 2376, 2808, 3240, 3672, 4104, 4392, 4680, 4968, 5256, 5544, 5832],
 };
 
 function getBienioCategory(category) {

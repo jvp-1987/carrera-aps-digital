@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
 import { checkPromotion, calculateTrainingGap, LEVEL_RANGES_AB, LEVEL_RANGES_CF } from '@/components/calculations';
 import ExperienceTab from '@/components/profile/ExperienceTab';
 import TrainingTab from '@/components/profile/TrainingTab';
@@ -14,6 +14,7 @@ import EvaluationsTab from '@/components/profile/EvaluationsTab';
 import LeaveTab from '@/components/profile/LeaveTab';
 import DemeritTab from '@/components/profile/DemeritTab';
 import SalarialTab from '@/components/profile/SalarialTab';
+import CareerTimelineTab from '@/components/profile/CareerTimelineTab';
 
 const categoryColors = {
   A: 'bg-violet-100 text-violet-700',

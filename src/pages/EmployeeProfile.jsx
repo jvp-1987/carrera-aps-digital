@@ -62,9 +62,12 @@ export default function EmployeeProfile() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-      <Button variant="ghost" onClick={() => navigate('/Employees')} className="mb-4 text-slate-600">
-        <ArrowLeft className="w-4 h-4 mr-2" /> Volver a Funcionarios
-      </Button>
+      <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" onClick={() => navigate('/Employees')} className="text-slate-600">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Volver a Funcionarios
+        </Button>
+        <HojaVidaPDF employee={employee} />
+      </div>
 
       {/* Header */}
       <Card className="mb-6">

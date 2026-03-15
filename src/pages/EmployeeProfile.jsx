@@ -145,12 +145,14 @@ export default function EmployeeProfile() {
           <TabsTrigger value="leaves" className="gap-1.5"><Clock className="w-4 h-4" /> Permisos</TabsTrigger>
           <TabsTrigger value="resolutions" className="gap-1.5"><FileText className="w-4 h-4" /> Resoluciones</TabsTrigger>
           <TabsTrigger value="evaluations" className="gap-1.5"><Star className="w-4 h-4" /> Calificaciones</TabsTrigger>
+          <TabsTrigger value="demerits" className="gap-1.5"><AlertTriangle className="w-4 h-4" /> Demérito</TabsTrigger>
         </TabsList>
         <TabsContent value="experience"><ExperienceTab employee={employee} /></TabsContent>
         <TabsContent value="training"><TrainingTab employee={employee} /></TabsContent>
         <TabsContent value="leaves"><LeaveTab employee={employee} /></TabsContent>
         <TabsContent value="resolutions"><ResolutionsTab employee={employee} /></TabsContent>
         <TabsContent value="evaluations"><EvaluationsTab employee={employee} /></TabsContent>
+        <TabsContent value="demerits"><DemeritTab employee={employee} /></TabsContent>
       </Tabs>
     </div>
   );

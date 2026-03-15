@@ -484,8 +484,9 @@ export default function HojaVidaPDF({ employee }) {
         doc.setPage(i);
         doc.setFontSize(7);
         doc.setTextColor(...textLight);
-        doc.text(`Hoja de Vida — ${employee.full_name} — Generado: ${new Date().toLocaleDateString('es-CL')}`, ml, 290);
-        doc.text(`Página ${i} de ${totalPages}`, pw - mr - 20, 290);
+        doc.setTextColor(...textLight);
+        doc.text(`Corporación Municipal de Panguipulli — Área Salud · ${employee.full_name} · ${new Date().toLocaleDateString('es-CL')}`, ml, 290);
+        doc.text(`Pág. ${i} / ${totalPages}`, pw - mr - 15, 290);
       }
 
       doc.save(`HojaVida_${employee.full_name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);

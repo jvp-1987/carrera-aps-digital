@@ -50,9 +50,10 @@ export default function EmployeeProfile() {
     );
   }
 
-  const promo = checkPromotion(employee.current_level, employee.total_points || 0);
-  const gap = calculateTrainingGap(employee.current_level, employee.bienio_points || 0, employee.training_points || 0);
-  const currentRange = LEVEL_RANGES[employee.current_level];
+  const promo = checkPromotion(employee.current_level, employee.total_points || 0, employee.category);
+  const gap = calculateTrainingGap(employee.current_level, employee.bienio_points || 0, employee.training_points || 0, employee.category);
+  const ranges = (employee.category === 'A' || employee.category === 'B') ? LEVEL_RANGES_AB : LEVEL_RANGES_CF;
+  const currentRange = ranges[employee.current_level];
   const progressInLevel = currentRange ? Math.min(100, ((employee.total_points || 0) - currentRange.min) / (currentRange.max - currentRange.min + 1) * 100) : 0;
 
   return (

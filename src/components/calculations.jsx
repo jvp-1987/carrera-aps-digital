@@ -123,47 +123,72 @@ export function getNextPostitleThreshold(category, currentHours) {
 }
 
 // ── NIVELES Y ASCENSO ────────────────────────────────────────
-export const LEVEL_RANGES = {
-  15: { min: 0,    max: 399 },
-  14: { min: 400,  max: 799 },
-  13: { min: 800,  max: 1199 },
-  12: { min: 1200, max: 1599 },
-  11: { min: 1600, max: 1999 },
-  10: { min: 2000, max: 2499 },
-  9:  { min: 2500, max: 2999 },
-  8:  { min: 3000, max: 3499 },
-  7:  { min: 3500, max: 3999 },
-  6:  { min: 4000, max: 4599 },
-  5:  { min: 4600, max: 5199 },
-  4:  { min: 5200, max: 5899 },
-  3:  { min: 5900, max: 6599 },
-  2:  { min: 6600, max: 7399 },
-  1:  { min: 7400, max: 99999 },
+// Tabla oficial Ley 19.378 — rangos diferenciados por categoría
+// Fuente: Datos estructurados hoja de cálculo oficial
+export const LEVEL_RANGES_AB = {
+  15: { min: 0,    max: 736 },
+  14: { min: 737,  max: 1472 },
+  13: { min: 1473, max: 2208 },
+  12: { min: 2209, max: 2944 },
+  11: { min: 2945, max: 3680 },
+  10: { min: 3681, max: 4416 },
+  9:  { min: 4417, max: 5152 },
+  8:  { min: 5153, max: 5888 },
+  7:  { min: 5889, max: 6624 },
+  6:  { min: 6625, max: 7360 },
+  5:  { min: 7361, max: 8096 },
+  4:  { min: 8097, max: 8832 },
+  3:  { min: 8833, max: 9568 },
+  2:  { min: 9569, max: 10304 },
+  1:  { min: 10305, max: 99999 },
 };
 
-export function checkPromotion(currentLevel, totalPoints) {
+export const LEVEL_RANGES_CF = {
+  15: { min: 0,    max: 688 },
+  14: { min: 689,  max: 1376 },
+  13: { min: 1377, max: 2064 },
+  12: { min: 2065, max: 2752 },
+  11: { min: 2753, max: 3440 },
+  10: { min: 3441, max: 4128 },
+  9:  { min: 4129, max: 4816 },
+  8:  { min: 4817, max: 5504 },
+  7:  { min: 5505, max: 6192 },
+  6:  { min: 6193, max: 6880 },
+  5:  { min: 6881, max: 7568 },
+  4:  { min: 7569, max: 8256 },
+  3:  { min: 8257, max: 8944 },
+  2:  { min: 8945, max: 9632 },
+  1:  { min: 9633, max: 99999 },
+};
+
+function getLevelRanges(category) {
+  return (category === 'A' || category === 'B') ? LEVEL_RANGES_AB : LEVEL_RANGES_CF;
+}
+
+export function checkPromotion(currentLevel, totalPoints, category = 'C') {
   if (currentLevel <= 1) return { eligible: false };
+  const ranges = getLevelRanges(category);
   const nextLevel = currentLevel - 1;
-  const range = LEVEL_RANGES[nextLevel];
+  const range = ranges[nextLevel];
   if (!range) return { eligible: false };
   return {
     eligible: totalPoints >= range.min,
     nextLevel,
     pointsNeeded: Math.max(0, range.min - totalPoints),
-    currentRange: LEVEL_RANGES[currentLevel],
+    currentRange: ranges[currentLevel],
     nextRange: range,
   };
 }
 
-// Gap analysis: how many more training points to reach next level
-export function calculateTrainingGap(currentLevel, bienioPoints, trainingPoints) {
+// Gap analysis: how many more points needed to reach next level
+export function calculateTrainingGap(currentLevel, bienioPoints, trainingPoints, category = 'C') {
   if (currentLevel <= 1) return { gap: 0, trainingGap: 0, message: 'Nivel máximo alcanzado' };
+  const ranges = getLevelRanges(category);
   const nextLevel = currentLevel - 1;
-  const range = LEVEL_RANGES[nextLevel];
+  const range = ranges[nextLevel];
   if (!range) return { gap: 0, trainingGap: 0, message: 'Sin datos del nivel' };
   const totalPoints = bienioPoints + trainingPoints;
   const gap = Math.max(0, range.min - totalPoints);
-  // Training gap = total gap minus what experience alone could still contribute
   return {
     gap,
     trainingGap: gap,

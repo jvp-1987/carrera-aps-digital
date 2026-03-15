@@ -471,8 +471,8 @@ export default function HojaVidaPDF({ employee }) {
       doc.line(sig1x, sigY, sig1x + 65, sigY);
       doc.setFontSize(7);
       doc.setTextColor(...textMid);
-      doc.text('Firma y Timbre Director(a) DESAM', sig1x, sigY + 4);
-      doc.text('Municipalidad de Panguipulli', sig1x, sigY + 8);
+      doc.text('Firma y Timbre Secretario/a General', sig1x, sigY + 4);
+      doc.text('Corporación Municipal de Panguipulli', sig1x, sigY + 8);
 
       doc.line(sig2x, sigY, sig2x + 65, sigY);
       doc.text('Firma Funcionario(a)', sig2x, sigY + 4);

@@ -13,6 +13,7 @@ const navItems = [
   { path: '/TrainingModule', label: 'Capacitación', icon: GraduationCap },
   { path: '/Resolutions', label: 'Resoluciones', icon: FileText },
   { path: '/Alerts', label: 'Alertas', icon: Bell },
+  { path: '/BudgetProjection', label: 'Proyección 2027', icon: TrendingUp },
 ];
 
 export default function Layout() {

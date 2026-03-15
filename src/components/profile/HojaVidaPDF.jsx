@@ -167,17 +167,17 @@ export default function HojaVidaPDF({ employee }) {
 
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255, 220, 220);
+      doc.setTextColor(180, 210, 255);
       doc.text('ÁREA SALUD', ml + 18, 20);
 
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(255, 200, 200);
+      doc.setTextColor(160, 195, 245);
       doc.text('Sistema de Gestión Carrera Funcionaria — Ley N° 19.378', ml + 18, 26);
 
       // Fecha emisión (derecha)
       doc.setFontSize(7);
-      doc.setTextColor(255, 200, 200);
+      doc.setTextColor(160, 195, 245);
       const fechaEmision = `Emitido: ${new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}`;
       doc.text(fechaEmision, pw - mr - doc.getTextWidth(fechaEmision), 33);
 

@@ -91,7 +91,7 @@ export default function HojaVidaPDF({ employee }) {
         doc.roundedRect(ml, y, cw, 8, 1.5, 1.5, 'F');
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...headerBg);
+        doc.setTextColor(30, 30, 40);
         doc.text(title.toUpperCase(), ml + 4, y + 5.5);
         y += 11;
       }

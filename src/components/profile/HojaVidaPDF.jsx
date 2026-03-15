@@ -123,7 +123,7 @@ export default function HojaVidaPDF({ employee }) {
       function drawRow(cols, widths, isHeader = false, isAlt = false) {
         checkPageBreak(LINE_H + 2);
         if (isAlt) { doc.setFillColor(...rowAlt); doc.rect(ml, y - 1, cw, LINE_H + 0.5, 'F'); }
-        if (isHeader) { doc.setFillColor(...headerBg); doc.rect(ml, y - 1, cw, LINE_H + 0.5, 'F'); }
+        if (isHeader) { doc.setFillColor(...navy); doc.rect(ml, y - 1, cw, LINE_H + 0.5, 'F'); }
         let cx = ml + 2;
         cols.forEach((col, i) => {
           doc.setFontSize(isHeader ? 7 : 7.5);

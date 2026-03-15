@@ -149,6 +149,7 @@ export default function EmployeeProfile() {
           <TabsTrigger value="evaluations" className="gap-1.5"><Star className="w-4 h-4" /> Calificaciones</TabsTrigger>
           <TabsTrigger value="demerits" className="gap-1.5"><AlertTriangle className="w-4 h-4" /> Demérito</TabsTrigger>
           <TabsTrigger value="salarial" className="gap-1.5"><DollarSign className="w-4 h-4" /> Remuneraciones</TabsTrigger>
+          <TabsTrigger value="career" className="gap-1.5"><TrendingUp className="w-4 h-4" /> Línea de Carrera</TabsTrigger>
         </TabsList>
         <TabsContent value="experience"><ExperienceTab employee={employee} /></TabsContent>
         <TabsContent value="training"><TrainingTab employee={employee} /></TabsContent>
@@ -157,6 +158,7 @@ export default function EmployeeProfile() {
         <TabsContent value="evaluations"><EvaluationsTab employee={employee} /></TabsContent>
         <TabsContent value="demerits"><DemeritTab employee={employee} /></TabsContent>
         <TabsContent value="salarial"><SalarialTab employee={employee} /></TabsContent>
+        <TabsContent value="career"><CareerTimelineTab employee={employee} /></TabsContent>
       </Tabs>
     </div>
   );

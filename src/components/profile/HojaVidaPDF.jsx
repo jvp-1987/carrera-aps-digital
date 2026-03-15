@@ -139,29 +139,72 @@ export default function HojaVidaPDF({ employee }) {
       // ══════════════════════════════════════════════════════════
       // 1. ENCABEZADO INSTITUCIONAL
       // ══════════════════════════════════════════════════════════
-      doc.setFillColor(...headerBg);
-      doc.rect(0, 0, pw, 30, 'F');
 
-      doc.setFontSize(14);
+      // Franja superior roja institucional (color corporativo CORMUPA)
+      const red = [185, 28, 28];   // rojo corporativo
+      const redLight = [220, 38, 38];
+
+      doc.setFillColor(...red);
+      doc.rect(0, 0, pw, 36, 'F');
+
+      // Franja lateral izquierda decorativa
+      doc.setFillColor(...redLight);
+      doc.rect(0, 0, 3, 36, 'F');
+
+      // Símbolo decorativo corazón (círculo + texto)
+      doc.setFillColor(255, 255, 255);
+      doc.circle(ml + 7, 18, 7, 'F');
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...red);
+      doc.text('♥', ml + 4.5, 20.5);
+
+      // Nombre institución
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(255, 255, 255);
-      doc.text('HOJA DE VIDA FUNCIONARIA', ml, 13);
+      doc.text('CORPORACIÓN MUNICIPAL DE PANGUIPULLI', ml + 18, 13);
 
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Municipalidad de Panguipulli — Departamento de Salud APS — Ley 19.378', ml, 19);
-      doc.text(`Emitido: ${new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}`, ml, 24);
-
-      // Initials avatar
-      const initials = employee.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??';
-      doc.setFillColor(255, 255, 255, 0.2);
-      doc.circle(pw - mr - 10, 15, 9, 'F');
-      doc.setFontSize(11);
+      doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(37, 99, 235);
-      doc.text(initials, pw - mr - 10 - doc.getTextWidth(initials) / 2, 17.5);
+      doc.setTextColor(255, 220, 220);
+      doc.text('ÁREA SALUD', ml + 18, 20);
 
-      y = 38;
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(255, 200, 200);
+      doc.text('Sistema de Gestión Carrera Funcionaria — Ley N° 19.378', ml + 18, 26);
+
+      // Fecha emisión (derecha)
+      doc.setFontSize(7);
+      doc.setTextColor(255, 200, 200);
+      const fechaEmision = `Emitido: ${new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+      doc.text(fechaEmision, pw - mr - doc.getTextWidth(fechaEmision), 33);
+
+      // Línea separadora dorada
+      doc.setDrawColor(251, 191, 36);
+      doc.setLineWidth(0.8);
+      doc.line(0, 36, pw, 36);
+      doc.setLineWidth(0.2);
+
+      // Sub-franja gris claro con título del documento
+      doc.setFillColor(248, 250, 252);
+      doc.rect(0, 36, pw, 10, 'F');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textDark);
+      doc.text('HOJA DE VIDA FUNCIONARIA', ml, 43);
+
+      // Initials avatar (derecha)
+      const initials = employee.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??';
+      doc.setFillColor(...red);
+      doc.circle(pw - mr - 8, 43, 5, 'F');
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text(initials, pw - mr - 8 - doc.getTextWidth(initials) / 2, 45);
+
+      y = 52;
 
       // ══════════════════════════════════════════════════════════
       // 2. DATOS PERSONALES Y LABORALES

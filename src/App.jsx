@@ -1,16 +1,23 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Add page imports here
+
+import Layout from '@/components/Layout';
+import Dashboard from '@/pages/Dashboard';
+import Employees from '@/pages/Employees';
+import EmployeeForm from '@/pages/EmployeeForm';
+import EmployeeProfile from '@/pages/EmployeeProfile';
+import TrainingModule from '@/pages/TrainingModule';
+import Resolutions from '@/pages/Resolutions';
+import Alerts from '@/pages/Alerts';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -19,29 +26,33 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
       navigateToLogin();
       return null;
     }
   }
 
-  // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route path="/" element={<Navigate to="/Dashboard" replace />} />
+      <Route element={<Layout />}>
+        <Route path="/Dashboard" element={<Dashboard />} />
+        <Route path="/Employees" element={<Employees />} />
+        <Route path="/EmployeeForm" element={<EmployeeForm />} />
+        <Route path="/EmployeeProfile" element={<EmployeeProfile />} />
+        <Route path="/TrainingModule" element={<TrainingModule />} />
+        <Route path="/Resolutions" element={<Resolutions />} />
+        <Route path="/Alerts" element={<Alerts />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };
 
-
 function App() {
-
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>

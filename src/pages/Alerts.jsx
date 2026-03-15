@@ -17,7 +17,7 @@ export default function Alerts() {
   // Alertas de ascenso
   const promotionAlerts = activeEmployees
     .map(emp => {
-      const promo = checkPromotion(emp.current_level, emp.total_points || 0);
+      const promo = checkPromotion(emp.current_level, emp.total_points || 0, emp.category);
       return { ...emp, promo };
     })
     .filter(e => e.promo.eligible);
@@ -25,7 +25,7 @@ export default function Alerts() {
   // Brecha de capacitación
   const trainingGapAlerts = activeEmployees
     .map(emp => {
-      const gap = calculateTrainingGap(emp.current_level, emp.bienio_points || 0, emp.training_points || 0);
+      const gap = calculateTrainingGap(emp.current_level, emp.bienio_points || 0, emp.training_points || 0, emp.category);
       return { ...emp, gap };
     })
     .filter(e => e.gap.gap > 0)

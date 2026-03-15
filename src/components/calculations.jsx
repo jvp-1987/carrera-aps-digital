@@ -105,6 +105,17 @@ export function calculateTrainingPoints(hours, grade, technicalLevel) {
   return Math.round(durationFactor * gradeFactor * levelFactor * 100) / 100;
 }
 
+// ── TABLA DE CAPACITACIÓN COMPLETA (Art. 10°) ───────────────
+// Puntaje máximo acumulado por periodo (1-30), tabla oficial
+// Cat. A y B: incremento de 140 pts/periodo
+// Cat. C, D, E y F: incremento de 115 pts/periodo
+export const MAX_TRAINING_POINTS_AB = 4200;  // 30 × 140
+export const MAX_TRAINING_POINTS_CF = 3450;  // 30 × 115
+
+export function getMaxTrainingPoints(category) {
+  return (category === 'A' || category === 'B') ? MAX_TRAINING_POINTS_AB : MAX_TRAINING_POINTS_CF;
+}
+
 // ── POSTÍTULO (Cat. A y B) ───────────────────────────────────
 // Tramos: hasta 1000h → 5%, 1001-2000h → 10%, 2001+h → 15%
 export function calculatePostitlePercentage(category, totalPostitleHours) {

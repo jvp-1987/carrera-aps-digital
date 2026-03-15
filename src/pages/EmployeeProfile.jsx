@@ -15,6 +15,7 @@ import LeaveTab from '@/components/profile/LeaveTab';
 import DemeritTab from '@/components/profile/DemeritTab';
 import SalarialTab from '@/components/profile/SalarialTab';
 import CareerTimelineTab from '@/components/profile/CareerTimelineTab';
+import HojaVidaPDF from '@/components/profile/HojaVidaPDF';
 
 const categoryColors = {
   A: 'bg-violet-100 text-violet-700',

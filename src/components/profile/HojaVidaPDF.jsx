@@ -197,7 +197,7 @@ export default function HojaVidaPDF({ employee }) {
 
       // Initials avatar (derecha)
       const initials = employee.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??';
-      doc.setFillColor(...red);
+      doc.setFillColor(...navy);
       doc.circle(pw - mr - 8, 43, 5, 'F');
       doc.setFontSize(7);
       doc.setFont('helvetica', 'bold');

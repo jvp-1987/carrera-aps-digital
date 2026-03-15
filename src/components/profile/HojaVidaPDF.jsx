@@ -459,9 +459,9 @@ export default function HojaVidaPDF({ employee }) {
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...textMid);
-      doc.text('Este documento ha sido generado automáticamente desde el Sistema de Gestión de Carrera Funcionaria APS Panguipulli,', ml + 4, y + 6);
-      doc.text('conforme a lo dispuesto en la Ley N° 19.378 y sus modificaciones. Para efectos legales se requiere firma y timbre del', ml + 4, y + 10);
-      doc.text('Director(a) del Departamento de Salud Municipal o de quien lo subrogue.', ml + 4, y + 14);
+      doc.text('Este documento ha sido generado automáticamente desde el Sistema de Gestión de Carrera Funcionaria de la Corporación Municipal', ml + 4, y + 6);
+      doc.text('de Panguipulli — Área Salud, conforme a lo dispuesto en la Ley N° 19.378 y sus modificaciones. Para efectos legales se', ml + 4, y + 10);
+      doc.text('requiere firma y timbre del/la Secretario/a General de la Corporación Municipal de Panguipulli o de quien lo subrogue.', ml + 4, y + 14);
 
       const sigY = y + 22;
       const sig1x = ml + 10;

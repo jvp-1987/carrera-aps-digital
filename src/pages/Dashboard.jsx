@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Users, GraduationCap, FileText, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
+import { Users, GraduationCap, FileText, AlertTriangle, TrendingUp, Clock, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { checkPromotion } from '@/components/calculations';
+import { checkPromotion, daysUntilClosure } from '@/components/calculations';
 
 function StatCard({ title, value, subtitle, icon: Icon, color }) {
   return (
@@ -59,10 +59,31 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Panel de Control</h1>
         <p className="text-slate-500 text-sm mt-1">Sistema de Carrera Funcionaria — Ley 19.378</p>
       </div>
+
+      {(() => {
+        const days = daysUntilClosure();
+        if (days === null) {
+          return (
+            <div className="mb-6 p-3 bg-red-50 border border-red-300 rounded-lg flex items-center gap-3 text-sm text-red-800">
+              <Bell className="w-4 h-4 flex-shrink-0" />
+              <span><strong>Periodo cerrado:</strong> La recepción de certificados de capacitación cerró el 31 de agosto. Los antecedentes ingresados aplican al siguiente año.</span>
+            </div>
+          );
+        }
+        if (days <= 30) {
+          return (
+            <div className="mb-6 p-3 bg-amber-50 border border-amber-300 rounded-lg flex items-center gap-3 text-sm text-amber-800">
+              <Bell className="w-4 h-4 flex-shrink-0" />
+              <span><strong>Cierre Anual en {days} días (31 agosto):</strong> Recordar a los funcionarios enviar sus certificados de capacitación antes del vencimiento del plazo.</span>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard title="Funcionarios Activos" value={activeEmployees.length} subtitle="Dotación vigente" icon={Users} color="bg-indigo-500" />

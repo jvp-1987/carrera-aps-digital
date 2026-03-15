@@ -270,7 +270,7 @@ export default function HojaVidaPDF({ employee }) {
         doc.text(b.label, ml + i * bw + (bw - 1) / 2 - doc.getTextWidth(b.label) / 2, y + 4);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...headerBg);
+        doc.setTextColor(...navy);
         doc.text(b.value, ml + i * bw + (bw - 1) / 2 - doc.getTextWidth(b.value) / 2, y + 10.5);
       });
       y += 17;

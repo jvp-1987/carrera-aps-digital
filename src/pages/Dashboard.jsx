@@ -1,0 +1,194 @@
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { Users, GraduationCap, FileText, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
+import { checkPromotion } from '@/components/calculations';
+
+function StatCard({ title, value, subtitle, icon: Icon, color }) {
+  return (
+    <Card className="relative overflow-hidden">
+      <div className={`absolute top-0 right-0 w-24 h-24 -mr-6 -mt-6 rounded-full opacity-10 ${color}`} />
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-500">{title}</p>
+            <p className="text-3xl font-bold mt-1 text-slate-900">{value}</p>
+            {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+          </div>
+          <div className={`p-2.5 rounded-xl ${color} bg-opacity-10`}>
+            <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function Dashboard() {
+  const { data: employees = [] } = useQuery({
+    queryKey: ['employees'],
+    queryFn: () => base44.entities.Employee.list(),
+  });
+
+  const { data: trainings = [] } = useQuery({
+    queryKey: ['trainings'],
+    queryFn: () => base44.entities.Training.list(),
+  });
+
+  const { data: resolutions = [] } = useQuery({
+    queryKey: ['resolutions'],
+    queryFn: () => base44.entities.Resolution.list(),
+  });
+
+  const activeEmployees = employees.filter(e => e.status === 'Activo');
+  const pendingTrainings = trainings.filter(t => t.status === 'Pendiente');
+  
+  const promotionAlerts = employees.filter(emp => {
+    if (!emp.current_level || !emp.total_points) return false;
+    const promo = checkPromotion(emp.current_level, emp.total_points);
+    return promo.eligible;
+  });
+
+  const upcomingBienios = employees.filter(emp => {
+    if (!emp.next_bienio_date) return false;
+    const diff = new Date(emp.next_bienio_date) - new Date();
+    return diff > 0 && diff < 90 * 24 * 60 * 60 * 1000;
+  });
+
+  return (
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900">Panel de Control</h1>
+        <p className="text-slate-500 text-sm mt-1">Sistema de Carrera Funcionaria — Ley 19.378</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard title="Funcionarios Activos" value={activeEmployees.length} subtitle="Dotación vigente" icon={Users} color="bg-indigo-500" />
+        <StatCard title="Capacitaciones Pendientes" value={pendingTrainings.length} subtitle="Por validar" icon={GraduationCap} color="bg-amber-500" />
+        <StatCard title="Alertas de Ascenso" value={promotionAlerts.length} subtitle="Cumplen puntaje" icon={TrendingUp} color="bg-emerald-500" />
+        <StatCard title="Bienios Próximos" value={upcomingBienios.length} subtitle="En 90 días" icon={Clock} color="bg-blue-500" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-500" />
+              Alertas de Ascenso
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {promotionAlerts.length === 0 ? (
+              <p className="text-sm text-slate-400 py-4 text-center">Sin alertas de ascenso pendientes</p>
+            ) : (
+              <div className="space-y-3">
+                {promotionAlerts.slice(0, 5).map(emp => {
+                  const promo = checkPromotion(emp.current_level, emp.total_points);
+                  return (
+                    <Link key={emp.id} to={`/EmployeeProfile?id=${emp.id}`} className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 transition-colors">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{emp.full_name}</p>
+                        <p className="text-xs text-slate-500">Cat. {emp.category} — Nivel {emp.current_level}</p>
+                      </div>
+                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                        → Nivel {promo.nextLevel}
+                      </Badge>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-500" />
+              Bienios Próximos (90 días)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {upcomingBienios.length === 0 ? (
+              <p className="text-sm text-slate-400 py-4 text-center">Sin bienios próximos a cumplir</p>
+            ) : (
+              <div className="space-y-3">
+                {upcomingBienios.slice(0, 5).map(emp => (
+                  <Link key={emp.id} to={`/EmployeeProfile?id=${emp.id}`} className="flex items-center justify-between p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{emp.full_name}</p>
+                      <p className="text-xs text-slate-500">Bienio #{(emp.bienios_count || 0) + 1}</p>
+                    </div>
+                    <Badge variant="outline" className="text-blue-700 border-blue-200">
+                      {emp.next_bienio_date}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-amber-500" />
+              Capacitaciones Pendientes de Validación
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pendingTrainings.length === 0 ? (
+              <p className="text-sm text-slate-400 py-4 text-center">Todas las capacitaciones están validadas</p>
+            ) : (
+              <div className="space-y-3">
+                {pendingTrainings.slice(0, 5).map(t => (
+                  <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-amber-50">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{t.course_name}</p>
+                      <p className="text-xs text-slate-500">{t.hours}h — Nota {t.grade}</p>
+                    </div>
+                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                      Pendiente
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4 text-indigo-500" />
+              Últimas Resoluciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {resolutions.length === 0 ? (
+              <p className="text-sm text-slate-400 py-4 text-center">Sin resoluciones registradas</p>
+            ) : (
+              <div className="space-y-3">
+                {resolutions.slice(0, 5).map(r => (
+                  <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Res. N° {r.resolution_number}</p>
+                      <p className="text-xs text-slate-500">{r.type} — {r.resolution_date}</p>
+                    </div>
+                    {r.file_url && (
+                      <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 text-xs hover:underline">
+                        Ver PDF
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

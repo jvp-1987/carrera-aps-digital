@@ -38,7 +38,7 @@ export default function LeaveTab({ employee }) {
       const eDays = calculateEffectiveDays(allPeriods, tLeave);
       const b = calculateBienios(eDays);
       const bp = calculateBienioPoints(employee.category, b);
-      const nbd = calculateNextBienioDate(employee.hire_date, tLeave, b);
+      const nbd = calculateNextBienioDate(allPeriods, tLeave, b);
       await base44.entities.Employee.update(employee.id, {
         total_experience_days: eDays,
         total_leave_days: tLeave,

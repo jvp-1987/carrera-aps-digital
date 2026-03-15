@@ -78,7 +78,7 @@ export default function HojaVidaPDF({ employee }) {
         // page footer
         doc.setFontSize(7);
         doc.setTextColor(...textLight);
-        doc.text(`Hoja de Vida — ${employee.full_name} — Generado: ${new Date().toLocaleDateString('es-CL')}`, ml, 290);
+        doc.text(`Corporación Municipal de Panguipulli — Área Salud · ${employee.full_name} · ${new Date().toLocaleDateString('es-CL')}`, ml, 290);
       }
 
       function checkPageBreak(needed = 10) {

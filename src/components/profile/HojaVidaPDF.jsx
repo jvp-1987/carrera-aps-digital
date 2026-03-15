@@ -140,24 +140,24 @@ export default function HojaVidaPDF({ employee }) {
       // 1. ENCABEZADO INSTITUCIONAL
       // ══════════════════════════════════════════════════════════
 
-      // Franja superior roja institucional (color corporativo CORMUPA)
-      const red = [185, 28, 28];   // rojo corporativo
-      const redLight = [220, 38, 38];
+      // Franja superior azul marino institucional
+      const navy = [15, 40, 90];       // azul marino
+      const navyLight = [30, 64, 130]; // azul marino más claro
 
-      doc.setFillColor(...red);
+      doc.setFillColor(...navy);
       doc.rect(0, 0, pw, 36, 'F');
 
       // Franja lateral izquierda decorativa
-      doc.setFillColor(...redLight);
+      doc.setFillColor(...navyLight);
       doc.rect(0, 0, 3, 36, 'F');
 
-      // Símbolo decorativo corazón (círculo + texto)
+      // Símbolo decorativo (círculo blanco con cruz/salud)
       doc.setFillColor(255, 255, 255);
       doc.circle(ml + 7, 18, 7, 'F');
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...red);
-      doc.text('♥', ml + 4.5, 20.5);
+      doc.setTextColor(...navy);
+      doc.text('+', ml + 4.5, 20.5);
 
       // Nombre institución
       doc.setFontSize(13);

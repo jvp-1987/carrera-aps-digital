@@ -47,7 +47,7 @@ export default function Dashboard() {
   
   const promotionAlerts = employees.filter(emp => {
     if (!emp.current_level || !emp.total_points) return false;
-    const promo = checkPromotion(emp.current_level, emp.total_points);
+    const promo = checkPromotion(emp.current_level, emp.total_points, emp.category);
     return promo.eligible;
   });
 
@@ -106,7 +106,7 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-3">
                 {promotionAlerts.slice(0, 5).map(emp => {
-                  const promo = checkPromotion(emp.current_level, emp.total_points);
+                  const promo = checkPromotion(emp.current_level, emp.total_points, emp.category);
                   return (
                     <Link key={emp.id} to={`/EmployeeProfile?id=${emp.id}`} className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 transition-colors">
                       <div>

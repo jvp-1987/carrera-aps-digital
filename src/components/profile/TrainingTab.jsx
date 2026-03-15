@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, GraduationCap, FileUp, Lock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod } from '@/components/calculations';
+import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR } from '@/components/calculations';
 
 export default function TrainingTab({ employee }) {
   const queryClient = useQueryClient();
@@ -176,10 +176,9 @@ export default function TrainingTab({ employee }) {
                     <Select value={form.technical_level} onValueChange={v => setForm(p => ({...p, technical_level: v}))}>
                       <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Básico">Básico</SelectItem>
-                        <SelectItem value="Intermedio">Intermedio</SelectItem>
-                        <SelectItem value="Avanzado">Avanzado</SelectItem>
-                        <SelectItem value="Postgrado">Postgrado</SelectItem>
+                        <SelectItem value="Bajo">Bajo (×1.0)</SelectItem>
+                        <SelectItem value="Medio">Medio (×1.1)</SelectItem>
+                        <SelectItem value="Alto">Alto (×1.2)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -216,8 +215,16 @@ export default function TrainingTab({ employee }) {
                 </div>
 
                 {form.hours && form.grade && form.technical_level && (
-                  <div className="p-3 bg-indigo-50 rounded-lg text-sm">
-                    <strong>Puntaje estimado:</strong> {calculateTrainingPoints(parseFloat(form.hours), parseFloat(form.grade), form.technical_level)} pts
+                  <div className="p-3 bg-indigo-50 rounded-lg text-sm space-y-1">
+                    <p className="font-semibold text-indigo-800">Puntaje estimado (Art. 10°)</p>
+                    <p className="text-slate-600">
+                      Duración: {getDurationFactor(parseFloat(form.hours))} pts ×
+                      Aprobación: ×{getGradeFactor(parseFloat(form.grade))} ×
+                      Nivel: ×{TECHNICAL_LEVEL_FACTOR[form.technical_level] || 1.0}
+                    </p>
+                    <p className="font-bold text-indigo-700 text-base">
+                      = {calculateTrainingPoints(parseFloat(form.hours), parseFloat(form.grade), form.technical_level)} puntos
+                    </p>
                   </div>
                 )}
 

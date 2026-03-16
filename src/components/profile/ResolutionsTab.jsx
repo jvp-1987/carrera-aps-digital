@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, FileText, FileUp } from 'lucide-react';
+import { Plus, FileText, FileUp, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ResolutionsTab({ employee }) {

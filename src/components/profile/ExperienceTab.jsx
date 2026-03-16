@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Calendar, Building2, FileText } from 'lucide-react';
+import { Plus, Calendar, Building2, FileText, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate } from '@/components/calculations';
 

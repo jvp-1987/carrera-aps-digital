@@ -15,6 +15,7 @@ import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePe
 export default function TrainingTab({ employee }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     course_name: '', institution: '', hours: '', grade: '',
@@ -40,10 +41,41 @@ export default function TrainingTab({ employee }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainings', employee.id] });
       setShowForm(false);
+      setEditingId(null);
       setForm({ course_name: '', institution: '', hours: '', grade: '', technical_level: '', completion_date: '', is_postitle: false, postitle_hours: 0, certificate_url: '' });
       toast.success('Capacitación registrada');
     },
   });
+
+  const updateTraining = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Training.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trainings', employee.id] });
+      setShowForm(false);
+      setEditingId(null);
+      setForm({ course_name: '', institution: '', hours: '', grade: '', technical_level: '', completion_date: '', is_postitle: false, postitle_hours: 0, certificate_url: '' });
+      toast.success('Capacitación actualizada');
+    },
+  });
+
+  const deleteTraining = useMutation({
+    mutationFn: id => base44.entities.Training.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trainings', employee.id] });
+      toast.success('Capacitación eliminada');
+    },
+  });
+
+  const openEdit = (t) => {
+    setEditingId(t.id);
+    setForm({
+      course_name: t.course_name || '', institution: t.institution || '',
+      hours: t.hours || '', grade: t.grade || '', technical_level: t.technical_level || '',
+      completion_date: t.completion_date || '', is_postitle: t.is_postitle || false,
+      postitle_hours: t.postitle_hours || 0, certificate_url: t.certificate_url || '',
+    });
+    setShowForm(true);
+  };
 
   const validateTraining = useMutation({
     mutationFn: async (training) => {
@@ -83,17 +115,19 @@ export default function TrainingTab({ employee }) {
       return;
     }
     const pts = calculateTrainingPoints(parseFloat(form.hours), parseFloat(form.grade), form.technical_level);
-    createTraining.mutate({
+    const payload = {
       ...form,
       employee_id: employee.id,
       hours: parseFloat(form.hours),
       grade: parseFloat(form.grade),
       calculated_points: pts,
       postitle_hours: form.is_postitle ? parseFloat(form.postitle_hours || 0) : 0,
-      year_period: currentYear,
-      is_locked: isClosed,
-      status: 'Pendiente',
-    });
+    };
+    if (editingId) {
+      updateTraining.mutate({ id: editingId, data: payload });
+    } else {
+      createTraining.mutate({ ...payload, year_period: currentYear, is_locked: isClosed, status: 'Pendiente' });
+    }
   };
 
   const statusColors = {

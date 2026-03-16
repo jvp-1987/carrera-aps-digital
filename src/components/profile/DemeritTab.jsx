@@ -40,6 +40,7 @@ const EMPTY_FORM = {
 export default function DemeritTab({ employee }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -56,10 +57,41 @@ export default function DemeritTab({ employee }) {
       queryClient.invalidateQueries({ queryKey: ['demerit_notes', employee.id] });
       toast.success('Anotación de demérito registrada');
       setOpen(false);
+      setEditingId(null);
       setForm(EMPTY_FORM);
       setFile(null);
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.DemeritNote.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['demerit_notes', employee.id] });
+      toast.success('Anotación actualizada');
+      setOpen(false);
+      setEditingId(null);
+      setForm(EMPTY_FORM);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: id => base44.entities.DemeritNote.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['demerit_notes', employee.id] });
+      toast.success('Anotación eliminada');
+    },
+  });
+
+  const openEdit = (note) => {
+    setEditingId(note.id);
+    setForm({
+      type: note.type || 'Atraso', date: note.date || '',
+      minutes_late: note.minutes_late || '', description: note.description || '',
+      impact_score: note.impact_score ?? -0.5, resolution_number: note.resolution_number || '',
+      status: note.status || 'Vigente',
+    });
+    setOpen(true);
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }) => base44.entities.DemeritNote.update(id, { status }),
@@ -82,14 +114,18 @@ export default function DemeritTab({ employee }) {
       const res = await base44.integrations.Core.UploadFile({ file });
       fileUrl = res.file_url;
     }
-    createMutation.mutate({
+    const payload = {
       ...form,
       employee_id: employee.id,
       minutes_late: form.type === 'Atraso' ? Number(form.minutes_late) : undefined,
       impact_score: Number(form.impact_score),
-      resolution_file_url: fileUrl || undefined,
-      registered_by: (await base44.auth.me())?.email,
-    });
+      ...(fileUrl ? { resolution_file_url: fileUrl } : {}),
+    };
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data: payload });
+    } else {
+      createMutation.mutate({ ...payload, registered_by: (await base44.auth.me())?.email });
+    }
     setUploading(false);
   };
 
@@ -128,7 +164,7 @@ export default function DemeritTab({ employee }) {
       {/* Header + Add button */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-slate-700 text-sm">Historial de Anotaciones</h3>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditingId(null); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="bg-red-600 hover:bg-red-700">
               <Plus className="w-4 h-4 mr-1" /> Nueva Anotación
@@ -138,7 +174,7 @@ export default function DemeritTab({ employee }) {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
-                Registrar Anotación de Demérito
+                {editingId ? 'Editar Anotación de Demérito' : 'Registrar Anotación de Demérito'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -202,10 +238,10 @@ export default function DemeritTab({ employee }) {
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button type="button" variant="outline" onClick={() => { setOpen(false); setEditingId(null); }}>Cancelar</Button>
                 <Button type="submit" className="bg-red-600 hover:bg-red-700"
-                  disabled={createMutation.isPending || uploading}>
-                  {createMutation.isPending || uploading ? 'Guardando...' : 'Registrar Anotación'}
+                  disabled={createMutation.isPending || updateMutation.isPending || uploading}>
+                  {(createMutation.isPending || updateMutation.isPending || uploading) ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Registrar Anotación'}
                 </Button>
               </div>
             </form>
@@ -267,18 +303,26 @@ export default function DemeritTab({ employee }) {
                         </div>
                       </div>
                     </div>
-                    {note.status === 'Vigente' && (
-                      <div className="flex gap-1 flex-shrink-0">
-                        <Button size="sm" variant="outline" className="text-xs h-7 px-2"
-                          onClick={() => updateStatusMutation.mutate({ id: note.id, status: 'Apelada' })}>
-                          Apelar
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-xs h-7 px-2 text-slate-400 hover:text-red-500"
-                          onClick={() => updateStatusMutation.mutate({ id: note.id, status: 'Anulada' })}>
-                          Anular
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex gap-1 flex-shrink-0">
+                      {note.status === 'Vigente' && (
+                        <>
+                          <Button size="sm" variant="outline" className="text-xs h-7 px-2"
+                            onClick={() => updateStatusMutation.mutate({ id: note.id, status: 'Apelada' })}>
+                            Apelar
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs h-7 px-2 text-slate-400 hover:text-red-500"
+                            onClick={() => updateStatusMutation.mutate({ id: note.id, status: 'Anulada' })}>
+                            Anular
+                          </Button>
+                        </>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(note)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-500" onClick={() => { if (confirm('¿Eliminar esta anotación?')) deleteMutation.mutate(note.id); }}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

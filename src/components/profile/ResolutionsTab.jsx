@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 export default function ResolutionsTab({ employee }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     resolution_number: '', resolution_date: '', type: '',
@@ -30,18 +31,45 @@ export default function ResolutionsTab({ employee }) {
     mutationFn: async (data) => {
       await base44.entities.Resolution.create(data);
       if (data.type === 'Cambio de Nivel' && data.new_level) {
-        await base44.entities.Employee.update(employee.id, {
-          current_level: parseInt(data.new_level),
-        });
+        await base44.entities.Employee.update(employee.id, { current_level: parseInt(data.new_level) });
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resolutions', employee.id] });
       queryClient.invalidateQueries({ queryKey: ['employee', employee.id] });
       setShowForm(false);
+      setEditingId(null);
       toast.success('Resolución registrada');
     },
   });
+
+  const updateResolution = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Resolution.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resolutions', employee.id] });
+      setShowForm(false);
+      setEditingId(null);
+      toast.success('Resolución actualizada');
+    },
+  });
+
+  const deleteResolution = useMutation({
+    mutationFn: id => base44.entities.Resolution.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resolutions', employee.id] });
+      toast.success('Resolución eliminada');
+    },
+  });
+
+  const openEdit = (r) => {
+    setEditingId(r.id);
+    setForm({
+      resolution_number: r.resolution_number || '', resolution_date: r.resolution_date || '',
+      type: r.type || '', description: r.description || '',
+      previous_level: r.previous_level || '', new_level: r.new_level || '', file_url: r.file_url || '',
+    });
+    setShowForm(true);
+  };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -58,12 +86,17 @@ export default function ResolutionsTab({ employee }) {
       toast.error('Debe adjuntar la resolución. No se permiten cambios sin respaldo legal.');
       return;
     }
-    createResolution.mutate({
+    const payload = {
       ...form,
       employee_id: employee.id,
       previous_level: form.previous_level ? parseInt(form.previous_level) : undefined,
       new_level: form.new_level ? parseInt(form.new_level) : undefined,
-    });
+    };
+    if (editingId) {
+      updateResolution.mutate({ id: editingId, data: payload });
+    } else {
+      createResolution.mutate(payload);
+    }
   };
 
   const typeColors = {
@@ -79,7 +112,7 @@ export default function ResolutionsTab({ employee }) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="text-base">Resoluciones y Actos Administrativos</CardTitle>
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditingId(null); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
               <Plus className="w-4 h-4 mr-1" /> Registrar
@@ -87,7 +120,7 @@ export default function ResolutionsTab({ employee }) {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nueva Resolución</DialogTitle>
+              <DialogTitle>{editingId ? 'Editar Resolución' : 'Nueva Resolución'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-3">
@@ -140,8 +173,8 @@ export default function ResolutionsTab({ employee }) {
                   <input type="file" accept=".pdf" className="hidden" onChange={handleFileUpload} />
                 </label>
               </div>
-              <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createResolution.isPending}>
-                {createResolution.isPending ? 'Guardando...' : 'Registrar Resolución'}
+              <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createResolution.isPending || updateResolution.isPending}>
+                {(createResolution.isPending || updateResolution.isPending) ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Registrar Resolución'}
               </Button>
             </div>
           </DialogContent>
@@ -163,7 +196,7 @@ export default function ResolutionsTab({ employee }) {
                     <p className="text-xs text-slate-500">{r.resolution_date} — {r.description || 'Sin descripción'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge className={typeColors[r.type] || 'bg-slate-100 text-slate-700'}>{r.type}</Badge>
                   {r.type === 'Cambio de Nivel' && r.new_level && (
                     <Badge variant="outline">→ Nivel {r.new_level}</Badge>
@@ -173,6 +206,12 @@ export default function ResolutionsTab({ employee }) {
                       PDF
                     </a>
                   )}
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(r)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-500" onClick={() => { if (confirm('¿Eliminar esta resolución?')) deleteResolution.mutate(r.id); }}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
               </div>
             ))}

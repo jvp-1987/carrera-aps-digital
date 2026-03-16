@@ -15,6 +15,7 @@ import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calcul
 export default function LeaveTab({ employee }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     start_date: '', end_date: '', reason: '',
@@ -27,6 +28,34 @@ export default function LeaveTab({ employee }) {
   });
 
   const totalLeaveDays = leaves.reduce((s, l) => s + (l.days_count || 0), 0);
+
+  const updateLeave = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.LeaveWithoutPay.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leaves', employee.id] });
+      setShowForm(false);
+      setEditingId(null);
+      toast.success('Permiso actualizado');
+    },
+  });
+
+  const deleteLeave = useMutation({
+    mutationFn: id => base44.entities.LeaveWithoutPay.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leaves', employee.id] });
+      toast.success('Permiso eliminado');
+    },
+  });
+
+  const openEdit = (l) => {
+    setEditingId(l.id);
+    setForm({
+      start_date: l.start_date || '', end_date: l.end_date || '',
+      reason: l.reason || '', resolution_number: l.resolution_number || '',
+      resolution_file_url: l.resolution_file_url || '',
+    });
+    setShowForm(true);
+  };
 
   const createLeave = useMutation({
     mutationFn: async (data) => {
@@ -52,6 +81,7 @@ export default function LeaveTab({ employee }) {
       queryClient.invalidateQueries({ queryKey: ['leaves', employee.id] });
       queryClient.invalidateQueries({ queryKey: ['employee', employee.id] });
       setShowForm(false);
+      setEditingId(null);
       toast.success('Permiso registrado. Antigüedad y bienios recalculados.');
     },
   });
@@ -69,11 +99,12 @@ export default function LeaveTab({ employee }) {
     const start = new Date(form.start_date);
     const end = new Date(form.end_date);
     const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    createLeave.mutate({
-      ...form,
-      employee_id: employee.id,
-      days_count: days,
-    });
+    const payload = { ...form, employee_id: employee.id, days_count: days };
+    if (editingId) {
+      updateLeave.mutate({ id: editingId, data: payload });
+    } else {
+      createLeave.mutate(payload);
+    }
   };
 
   return (
@@ -83,7 +114,7 @@ export default function LeaveTab({ employee }) {
           <CardTitle className="text-base">Permisos Sin Goce de Remuneraciones</CardTitle>
           <p className="text-xs text-slate-500 mt-1">Total descontado: <strong>{totalLeaveDays} días</strong></p>
         </div>
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditingId(null); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
               <Plus className="w-4 h-4 mr-1" /> Registrar
@@ -91,7 +122,7 @@ export default function LeaveTab({ employee }) {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Registrar Permiso Sin Goce</DialogTitle>
+              <DialogTitle>{editingId ? 'Editar Permiso Sin Goce' : 'Registrar Permiso Sin Goce'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-3">
@@ -122,8 +153,8 @@ export default function LeaveTab({ employee }) {
                   <input type="file" accept=".pdf" className="hidden" onChange={handleFileUpload} />
                 </label>
               </div>
-              <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createLeave.isPending}>
-                {createLeave.isPending ? 'Guardando...' : 'Registrar Permiso'}
+              <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createLeave.isPending || updateLeave.isPending}>
+                {(createLeave.isPending || updateLeave.isPending) ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Registrar Permiso'}
               </Button>
             </div>
           </DialogContent>
@@ -152,6 +183,12 @@ export default function LeaveTab({ employee }) {
                       PDF
                     </a>
                   )}
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(l)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-500" onClick={() => { if (confirm('¿Eliminar este permiso?')) deleteLeave.mutate(l.id); }}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
               </div>
             ))}

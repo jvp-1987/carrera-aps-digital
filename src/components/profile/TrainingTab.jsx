@@ -285,7 +285,7 @@ export default function TrainingTab({ employee }) {
                       <p className="text-xs text-slate-500">{t.hours}h — Nota {t.grade} — {t.technical_level}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={statusColors[t.status]}>{t.status}</Badge>
                     <Badge variant="outline">{t.calculated_points?.toFixed(0)} pts</Badge>
                     {t.status === 'Pendiente' && t.certificate_url && (
@@ -298,6 +298,12 @@ export default function TrainingTab({ employee }) {
                         PDF
                       </a>
                     )}
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(t)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-500" onClick={() => { if (confirm('¿Eliminar esta capacitación?')) deleteTraining.mutate(t.id); }}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))}

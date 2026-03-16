@@ -43,6 +43,21 @@ export default function EmployeeProfile() {
     enabled: !!employeeId,
   });
 
+  const updateLevel = useMutation({
+    mutationFn: (level) => base44.entities.Employee.update(employeeId, { current_level: level }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee', employeeId] });
+      setEditingLevel(false);
+      toast.success('Nivel actualizado');
+    },
+  });
+
+  const handleLevelSave = () => {
+    const val = parseInt(levelInput);
+    if (isNaN(val) || val < 1 || val > 15) { toast.error('Nivel debe ser entre 1 y 15'); return; }
+    updateLevel.mutate(val);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -59,21 +74,6 @@ export default function EmployeeProfile() {
       </div>
     );
   }
-
-  const updateLevel = useMutation({
-    mutationFn: (level) => base44.entities.Employee.update(employee.id, { current_level: level }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employee', employeeId] });
-      setEditingLevel(false);
-      toast.success('Nivel actualizado');
-    },
-  });
-
-  const handleLevelSave = () => {
-    const val = parseInt(levelInput);
-    if (isNaN(val) || val < 1 || val > 15) { toast.error('Nivel debe ser entre 1 y 15'); return; }
-    updateLevel.mutate(val);
-  };
 
   const promo = checkPromotion(employee.current_level, employee.total_points || 0, employee.category);
   const gap = calculateTrainingGap(employee.current_level, employee.bienio_points || 0, employee.training_points || 0, employee.category);

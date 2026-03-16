@@ -6,6 +6,7 @@ import {
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import NotificationBell from '@/components/NotificationBell';
 
 const navItems = [
   { path: '/Dashboard', label: 'Panel', icon: LayoutDashboard },
@@ -57,6 +58,7 @@ export default function Layout() {
         </nav>
 
         <div className="p-2 border-t border-slate-700 space-y-1">
+          <NotificationBell collapsed={collapsed} />
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 w-full transition-colors"

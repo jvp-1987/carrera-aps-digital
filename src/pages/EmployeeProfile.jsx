@@ -101,7 +101,30 @@ export default function EmployeeProfile() {
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-xl font-bold text-slate-900">{employee.full_name}</h1>
                 <Badge className={categoryColors[employee.category]}>Cat. {employee.category}</Badge>
-                <Badge variant="outline">Nivel {employee.current_level}</Badge>
+                {editingLevel ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number" min={1} max={15}
+                      value={levelInput}
+                      onChange={e => setLevelInput(e.target.value)}
+                      className="h-7 w-16 text-sm px-2"
+                      autoFocus
+                    />
+                    <Button size="icon" className="h-7 w-7 bg-emerald-600 hover:bg-emerald-700" onClick={handleLevelSave} disabled={updateLevel.isPending}>
+                      <Check className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingLevel(false)}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline">Nivel {employee.current_level}</Badge>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-indigo-600" onClick={() => { setLevelInput(String(employee.current_level || '')); setEditingLevel(true); }}>
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
                 <Badge className={employee.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
                   {employee.status}
                 </Badge>

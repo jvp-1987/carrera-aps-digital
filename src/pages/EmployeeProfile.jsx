@@ -60,6 +60,21 @@ export default function EmployeeProfile() {
     );
   }
 
+  const updateLevel = useMutation({
+    mutationFn: (level) => base44.entities.Employee.update(employee.id, { current_level: level }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee', employeeId] });
+      setEditingLevel(false);
+      toast.success('Nivel actualizado');
+    },
+  });
+
+  const handleLevelSave = () => {
+    const val = parseInt(levelInput);
+    if (isNaN(val) || val < 1 || val > 15) { toast.error('Nivel debe ser entre 1 y 15'); return; }
+    updateLevel.mutate(val);
+  };
+
   const promo = checkPromotion(employee.current_level, employee.total_points || 0, employee.category);
   const gap = calculateTrainingGap(employee.current_level, employee.bienio_points || 0, employee.training_points || 0, employee.category);
   const ranges = (employee.category === 'A' || employee.category === 'B') ? LEVEL_RANGES_AB : LEVEL_RANGES_CF;

@@ -31,8 +31,11 @@ const categoryColors = {
 
 export default function EmployeeProfile() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const urlParams = new URLSearchParams(window.location.search);
   const employeeId = urlParams.get('id');
+  const [editingLevel, setEditingLevel] = useState(false);
+  const [levelInput, setLevelInput] = useState('');
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ['employee', employeeId],

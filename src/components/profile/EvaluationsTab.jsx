@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 export default function EvaluationsTab({ employee }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     evaluation_year: new Date().getFullYear(), period_start: '', period_end: '',
@@ -32,9 +33,40 @@ export default function EvaluationsTab({ employee }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evaluations', employee.id] });
       setShowForm(false);
+      setEditingId(null);
       toast.success('Calificación registrada');
     },
   });
+
+  const updateEval = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.PerformanceEvaluation.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evaluations', employee.id] });
+      setShowForm(false);
+      setEditingId(null);
+      toast.success('Calificación actualizada');
+    },
+  });
+
+  const deleteEval = useMutation({
+    mutationFn: id => base44.entities.PerformanceEvaluation.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evaluations', employee.id] });
+      toast.success('Calificación eliminada');
+    },
+  });
+
+  const openEdit = (ev) => {
+    setEditingId(ev.id);
+    setForm({
+      evaluation_year: ev.evaluation_year || new Date().getFullYear(),
+      period_start: ev.period_start || '', period_end: ev.period_end || '',
+      score: ev.score || '', rating: ev.rating || '', evaluator: ev.evaluator || '',
+      observations: ev.observations || '', resolution_number: ev.resolution_number || '',
+      file_url: ev.file_url || '',
+    });
+    setShowForm(true);
+  };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -46,12 +78,17 @@ export default function EvaluationsTab({ employee }) {
   };
 
   const handleSubmit = () => {
-    createEval.mutate({
+    const payload = {
       ...form,
       employee_id: employee.id,
       evaluation_year: parseInt(form.evaluation_year),
       score: parseFloat(form.score),
-    });
+    };
+    if (editingId) {
+      updateEval.mutate({ id: editingId, data: payload });
+    } else {
+      createEval.mutate(payload);
+    }
   };
 
   const ratingColors = {
@@ -65,7 +102,7 @@ export default function EvaluationsTab({ employee }) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="text-base">Historial de Calificaciones</CardTitle>
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditingId(null); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
               <Plus className="w-4 h-4 mr-1" /> Registrar
@@ -73,7 +110,7 @@ export default function EvaluationsTab({ employee }) {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nueva Calificación</DialogTitle>
+              <DialogTitle>{editingId ? 'Editar Calificación' : 'Nueva Calificación'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-3">
@@ -130,8 +167,8 @@ export default function EvaluationsTab({ employee }) {
                   <input type="file" accept=".pdf" className="hidden" onChange={handleFileUpload} />
                 </label>
               </div>
-              <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createEval.isPending}>
-                {createEval.isPending ? 'Guardando...' : 'Registrar Calificación'}
+              <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createEval.isPending || updateEval.isPending}>
+                {(createEval.isPending || updateEval.isPending) ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Registrar Calificación'}
               </Button>
             </div>
           </DialogContent>
@@ -160,6 +197,12 @@ export default function EvaluationsTab({ employee }) {
                       PDF
                     </a>
                   )}
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(ev)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-500" onClick={() => { if (confirm('¿Eliminar esta calificación?')) deleteEval.mutate(ev.id); }}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
               </div>
             ))}

@@ -175,7 +175,7 @@ export default function TrainingTab({ employee }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">Capacitaciones</CardTitle>
-          <Dialog open={showForm} onOpenChange={setShowForm}>
+          <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditingId(null); }}>
             <DialogTrigger asChild>
               <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
                 <Plus className="w-4 h-4 mr-1" /> Registrar
@@ -183,7 +183,7 @@ export default function TrainingTab({ employee }) {
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Nueva Capacitación</DialogTitle>
+                <DialogTitle>{editingId ? 'Editar Capacitación' : 'Nueva Capacitación'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div>
@@ -262,8 +262,8 @@ export default function TrainingTab({ employee }) {
                   </div>
                 )}
 
-                <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createTraining.isPending}>
-                  {createTraining.isPending ? 'Guardando...' : 'Registrar Capacitación'}
+                <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createTraining.isPending || updateTraining.isPending}>
+                  {(createTraining.isPending || updateTraining.isPending) ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Registrar Capacitación'}
                 </Button>
               </div>
             </DialogContent>

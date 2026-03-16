@@ -1,12 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign, TrendingUp, Pencil, Check, X } from 'lucide-react';
 import { checkPromotion, calculateTrainingGap, LEVEL_RANGES_AB, LEVEL_RANGES_CF } from '@/components/calculations';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import ExperienceTab from '@/components/profile/ExperienceTab';
 import TrainingTab from '@/components/profile/TrainingTab';
 import ResolutionsTab from '@/components/profile/ResolutionsTab';

@@ -15,6 +15,7 @@ import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calcul
 export default function ExperienceTab({ employee }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     period_type: '', start_date: '', end_date: '', institution: '',
     resolution_number: '', days_count: 0,
@@ -42,9 +43,40 @@ export default function ExperienceTab({ employee }) {
       queryClient.invalidateQueries({ queryKey: ['service-periods', employee.id] });
       recalculate();
       setShowForm(false);
+      setEditingId(null);
       toast.success('Periodo agregado');
     },
   });
+
+  const updatePeriod = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.ServicePeriod.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-periods', employee.id] });
+      recalculate();
+      setShowForm(false);
+      setEditingId(null);
+      toast.success('Periodo actualizado');
+    },
+  });
+
+  const deletePeriod = useMutation({
+    mutationFn: id => base44.entities.ServicePeriod.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-periods', employee.id] });
+      recalculate();
+      toast.success('Periodo eliminado');
+    },
+  });
+
+  const openEdit = (p) => {
+    setEditingId(p.id);
+    setForm({
+      period_type: p.period_type || '', start_date: p.start_date || '',
+      end_date: p.end_date || '', institution: p.institution || '',
+      resolution_number: p.resolution_number || '', days_count: p.days_count || 0,
+    });
+    setShowForm(true);
+  };
 
   const recalculate = async () => {
     const allPeriods = await base44.entities.ServicePeriod.filter({ employee_id: employee.id });
@@ -70,12 +102,12 @@ export default function ExperienceTab({ employee }) {
     const start = new Date(form.start_date);
     const end = form.end_date ? new Date(form.end_date) : new Date();
     const days = Math.floor((end - start) / (1000 * 60 * 60 * 24));
-    createPeriod.mutate({
-      ...form,
-      employee_id: employee.id,
-      days_count: days,
-      is_active: !form.end_date,
-    });
+    const payload = { ...form, employee_id: employee.id, days_count: days, is_active: !form.end_date };
+    if (editingId) {
+      updatePeriod.mutate({ id: editingId, data: payload });
+    } else {
+      createPeriod.mutate(payload);
+    }
   };
 
   return (
@@ -116,7 +148,7 @@ export default function ExperienceTab({ employee }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">Periodos de Servicio</CardTitle>
-          <Dialog open={showForm} onOpenChange={setShowForm}>
+          <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditingId(null); }}>
             <DialogTrigger asChild>
               <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
                 <Plus className="w-4 h-4 mr-1" /> Agregar
@@ -124,7 +156,7 @@ export default function ExperienceTab({ employee }) {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nuevo Periodo de Servicio</DialogTitle>
+                <DialogTitle>{editingId ? 'Editar Periodo de Servicio' : 'Nuevo Periodo de Servicio'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div>
@@ -157,8 +189,8 @@ export default function ExperienceTab({ employee }) {
                   <Label>N° Resolución</Label>
                   <Input value={form.resolution_number} onChange={e => setForm(p => ({...p, resolution_number: e.target.value}))} />
                 </div>
-                <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createPeriod.isPending}>
-                  {createPeriod.isPending ? 'Guardando...' : 'Guardar Periodo'}
+                <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={createPeriod.isPending || updatePeriod.isPending}>
+                  {(createPeriod.isPending || updatePeriod.isPending) ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Guardar Periodo'}
                 </Button>
               </div>
             </DialogContent>
@@ -183,6 +215,12 @@ export default function ExperienceTab({ employee }) {
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{p.period_type}</Badge>
                     <Badge className="bg-slate-100 text-slate-700">{p.days_count || 0} días</Badge>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(p)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-500" onClick={() => { if (confirm('¿Eliminar este periodo?')) deletePeriod.mutate(p.id); }}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))}

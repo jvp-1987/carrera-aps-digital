@@ -278,6 +278,7 @@ export default function Resolutions() {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={typeColors[r.type] || 'bg-slate-100 text-slate-700'}>{r.type}</Badge>
+                    {r.status && <Badge className={statusColors[r.status] || 'bg-slate-100 text-slate-600'}>{r.status}</Badge>}
                     {r.type === 'Cambio de Nivel' && r.new_level && (
                       <Badge variant="outline">Nivel {r.previous_level} → {r.new_level}</Badge>
                     )}

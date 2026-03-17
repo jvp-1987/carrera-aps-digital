@@ -32,6 +32,38 @@ export default function Employees() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const exportToExcel = () => {
+    const headers = ['RUT', 'Nombre', 'Categoría', 'Cargo', 'Unidad', 'Nivel Actual', 'Bienios', 'Pts. Bienio', 'Pts. Capacitación', 'Puntaje Total', 'Estado', 'Tipo Contrato', 'Fecha Ingreso'];
+    const rows = employees.map(e => [
+      e.rut || '',
+      e.full_name || '',
+      e.category || '',
+      e.position || '',
+      e.department || '',
+      e.current_level ?? '',
+      e.bienios_count ?? 0,
+      e.bienio_points ?? 0,
+      e.training_points ?? 0,
+      e.total_points ?? 0,
+      e.status || '',
+      e.contract_type || '',
+      e.hire_date || '',
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `funcionarios_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ['employees'],
     queryFn: () => base44.entities.Employee.list(),

@@ -85,12 +85,17 @@ export default function Employees() {
           <h1 className="text-2xl font-bold text-slate-900">Funcionarios</h1>
           <p className="text-slate-500 text-sm mt-1">{employees.length} registrados en el sistema</p>
         </div>
-        <Link to="/EmployeeForm">
-          <Button className="bg-indigo-600 hover:bg-indigo-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Funcionario
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToExcel} className="flex items-center gap-2">
+            <Download className="w-4 h-4" /> Exportar Excel
           </Button>
-        </Link>
+          <Link to="/EmployeeForm">
+            <Button className="bg-indigo-600 hover:bg-indigo-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Funcionario
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card className="mb-6">

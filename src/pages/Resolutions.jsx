@@ -53,6 +53,55 @@ export default function Resolutions() {
   const employeeMap = {};
   employees.forEach(e => { employeeMap[e.id] = e; });
 
+  const createResolution = useMutation({
+    mutationFn: async (data) => {
+      // Create one resolution record per affected employee (or a single one if none selected)
+      const ids = data.employee_ids?.length ? data.employee_ids : [null];
+      const promises = ids.map(eid =>
+        base44.entities.Resolution.create({
+          ...data,
+          employee_id: eid || '',
+          previous_level: data.previous_level ? parseInt(data.previous_level) : undefined,
+          new_level: data.new_level ? parseInt(data.new_level) : undefined,
+        })
+      );
+      return Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-resolutions'] });
+      setShowForm(false);
+      setForm(EMPTY_FORM);
+      toast.success('Resolución registrada correctamente');
+    },
+  });
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm(f => ({ ...f, file_url }));
+    setUploading(false);
+  };
+
+  const toggleEmployee = (id) => {
+    setForm(f => ({
+      ...f,
+      employee_ids: f.employee_ids.includes(id)
+        ? f.employee_ids.filter(x => x !== id)
+        : [...f.employee_ids, id],
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.resolution_number || !form.resolution_date || !form.type) {
+      toast.error('Completa los campos obligatorios');
+      return;
+    }
+    createResolution.mutate(form);
+  };
+
   const filtered = resolutions.filter(r => {
     const emp = employeeMap[r.employee_id];
     const matchSearch = !search || 

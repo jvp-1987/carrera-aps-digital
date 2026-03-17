@@ -12,6 +12,17 @@ import { FileText, Search, Plus, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const statusColors = {
+  'Borrador': 'bg-slate-100 text-slate-600',
+  'Firmada': 'bg-blue-100 text-blue-700',
+  'Publicada': 'bg-emerald-100 text-emerald-700',
+};
+
+const EMPTY_FORM = {
+  resolution_number: '', resolution_date: '', type: 'Otro', status: 'Borrador',
+  description: '', employee_ids: [], previous_level: '', new_level: '', file_url: '',
+};
+
 const typeColors = {
   'Cambio de Nivel': 'bg-indigo-100 text-indigo-700',
   'Reconocimiento de Bienio': 'bg-emerald-100 text-emerald-700',

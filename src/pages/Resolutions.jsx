@@ -35,6 +35,10 @@ const typeColors = {
 export default function Resolutions() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [uploading, setUploading] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: resolutions = [], isLoading } = useQuery({
     queryKey: ['all-resolutions'],

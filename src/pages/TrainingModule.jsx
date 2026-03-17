@@ -135,10 +135,115 @@ export default function TrainingModule() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Módulo de Capacitación</h1>
-        <p className="text-slate-500 text-sm mt-1">Gestión y validación de capacitaciones — Ley 19.378</p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Módulo de Capacitación</h1>
+          <p className="text-slate-500 text-sm mt-1">Gestión y validación de capacitaciones — Ley 19.378</p>
+        </div>
+        <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Nueva Capacitación
+        </Button>
       </div>
+
+      {/* Dialog Nueva Capacitación */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registrar Nueva Capacitación</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            <div>
+              <Label>Funcionario *</Label>
+              <Select value={form.employee_id} onValueChange={v => handleFormChange('employee_id', v)}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar funcionario..." /></SelectTrigger>
+                <SelectContent>
+                  {employees.sort((a,b) => a.full_name.localeCompare(b.full_name)).map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.full_name} — Cat. {e.category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Nombre del Curso *</Label>
+              <Input value={form.course_name} onChange={e => handleFormChange('course_name', e.target.value)} placeholder="Ej: Atención Primaria de Salud" />
+            </div>
+            <div>
+              <Label>Institución</Label>
+              <Input value={form.institution} onChange={e => handleFormChange('institution', e.target.value)} placeholder="Ej: MINSAL, CESFAM, etc." />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Horas Pedagógicas *</Label>
+                <Input type="number" min="1" value={form.hours} onChange={e => handleFormChange('hours', e.target.value)} placeholder="Ej: 40" />
+              </div>
+              <div>
+                <Label>Nota (1.0–7.0) *</Label>
+                <Input type="number" min="1" max="7" step="0.1" value={form.grade} onChange={e => handleFormChange('grade', e.target.value)} placeholder="Ej: 6.5" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Nivel Técnico</Label>
+                <Select value={form.technical_level} onValueChange={v => handleFormChange('technical_level', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Básico">Básico (×1.0)</SelectItem>
+                    <SelectItem value="Intermedio">Intermedio (×1.1)</SelectItem>
+                    <SelectItem value="Avanzado">Avanzado (×1.2)</SelectItem>
+                    <SelectItem value="Postgrado">Postgrado (×1.2)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Fecha de Término</Label>
+                <Input type="date" value={form.completion_date} onChange={e => handleFormChange('completion_date', e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Estado</Label>
+                <Select value={form.status} onValueChange={v => handleFormChange('status', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pendiente">Pendiente</SelectItem>
+                    <SelectItem value="Validado">Validado</SelectItem>
+                    <SelectItem value="Rechazado">Rechazado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Puntaje Calculado</Label>
+                <Input type="number" step="0.01" value={form.calculated_points} onChange={e => handleFormChange('calculated_points', e.target.value)} placeholder="Auto-calculado" />
+              </div>
+            </div>
+            <div>
+              <Label>Documento Respaldatorio</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <label className="flex items-center gap-2 cursor-pointer px-3 py-2 border rounded-md text-sm hover:bg-slate-50 flex-1 justify-center">
+                  <Upload className="w-4 h-4" />
+                  {uploading ? 'Subiendo...' : form.certificate_url ? 'Documento cargado ✓' : 'Subir PDF'}
+                  <input type="file" accept=".pdf,.jpg,.png" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                </label>
+                {form.certificate_url && (
+                  <a href={form.certificate_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 text-xs hover:underline">Ver</a>
+                )}
+              </div>
+            </div>
+            {form.calculated_points > 0 && (
+              <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-800">
+                📊 Puntaje estimado: <strong>{form.calculated_points} pts</strong>
+                {form.status === 'Validado' && ' — Se sumará automáticamente al funcionario al guardar.'}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+              <Button type="submit" disabled={createTraining.isPending}>
+                {createTraining.isPending ? 'Guardando...' : 'Registrar Capacitación'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {isClosed && (
         <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex items-center gap-2">

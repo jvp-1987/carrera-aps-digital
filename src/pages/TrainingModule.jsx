@@ -41,6 +41,73 @@ export default function TrainingModule() {
   const employeeMap = {};
   employees.forEach(e => { employeeMap[e.id] = e; });
 
+  const createTraining = useMutation({
+    mutationFn: async (data) => {
+      const training = await base44.entities.Training.create(data);
+      // If validated, update employee points
+      if (data.status === 'Validado') {
+        await syncEmployeePoints(data.employee_id);
+      }
+      return training;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-trainings'] });
+      setShowForm(false);
+      setForm(EMPTY_FORM);
+      toast.success('Capacitación registrada correctamente');
+    },
+  });
+
+  const syncEmployeePoints = async (employeeId) => {
+    const allTrainings = await base44.entities.Training.filter({ employee_id: employeeId, status: 'Validado' });
+    const totalTrainingPoints = allTrainings.reduce((s, t) => s + (t.calculated_points || 0), 0);
+    const emp = await base44.entities.Employee.filter({ id: employeeId }).then(r => r[0]);
+    if (emp) {
+      const maxPts = getMaxTrainingPoints(emp.category);
+      const cappedPoints = Math.min(totalTrainingPoints, maxPts);
+      const totalPoints = (emp.bienio_points || 0) + cappedPoints;
+      await base44.entities.Employee.update(employeeId, { training_points: cappedPoints, total_points: totalPoints });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm(f => ({ ...f, certificate_url: file_url }));
+    setUploading(false);
+  };
+
+  const handleFormChange = (field, value) => {
+    const updated = { ...form, [field]: value };
+    // Auto-calculate points when hours, grade or level change
+    if (['hours', 'grade', 'technical_level'].includes(field)) {
+      const h = parseFloat(field === 'hours' ? value : updated.hours);
+      const g = parseFloat(field === 'grade' ? value : updated.grade);
+      const lvl = field === 'technical_level' ? value : updated.technical_level;
+      if (h > 0 && g > 0) {
+        updated.calculated_points = calculateTrainingPoints(h, g, lvl);
+      }
+    }
+    setForm(updated);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.employee_id || !form.course_name || !form.hours || !form.grade) {
+      toast.error('Completa los campos obligatorios');
+      return;
+    }
+    createTraining.mutate({
+      ...form,
+      hours: parseFloat(form.hours),
+      grade: parseFloat(form.grade),
+      calculated_points: parseFloat(form.calculated_points) || 0,
+    });
+  };
+
   const filtered = trainings.filter(t => {
     const emp = employeeMap[t.employee_id];
     const matchSearch = !search || 

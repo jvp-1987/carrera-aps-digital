@@ -13,10 +13,20 @@ import { isAnnualClosurePeriod, calculateTrainingPoints, getMaxTrainingPoints } 
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const EMPTY_FORM = {
+  employee_id: '', course_name: '', institution: '', hours: '', grade: '',
+  technical_level: 'Básico', completion_date: '', status: 'Pendiente',
+  certificate_url: '', calculated_points: '',
+};
+
 export default function TrainingModule() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [uploading, setUploading] = useState(false);
   const isClosed = isAnnualClosurePeriod();
+  const queryClient = useQueryClient();
 
   const { data: trainings = [], isLoading } = useQuery({
     queryKey: ['all-trainings'],

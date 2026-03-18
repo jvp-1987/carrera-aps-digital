@@ -81,9 +81,42 @@ function validateRow(tab, row, rutMap) {
 
 // ── Plantillas ────────────────────────────────────────────────
 const TEMPLATES = {
-  dotacion: { name: 'plantilla_dotacion.csv', content: 'rut,nombre,categoria,nivel,cargo,fecha_ingreso,tipo_contrato\n12345678-9,Juan Pérez,B,8,Enfermero,2015-03-01,Planta' },
-  experiencia: { name: 'plantilla_experiencia.csv', content: 'rut,tipo_periodo,fecha_inicio,fecha_fin,institucion,n_resolucion\n12345678-9,Planta,2010-01-01,2015-02-28,Hospital Base Valdivia,EX-2010-001' },
-  capacitacion: { name: 'plantilla_capacitacion.csv', content: 'rut,nombre_curso,institucion,horas,nota,nivel_tecnico,fecha,estado\n12345678-9,Primeros Auxilios,ACHS,40,6.5,Intermedio,2023-06-15,Validado' },
+  dotacion: {
+    name: 'plantilla_dotacion.csv',
+    content: [
+      'rut,nombre,categoria,nivel,cargo,fecha_ingreso,tipo_contrato',
+      '12345678-9,María González Soto,A,6,Médico General,2010-03-15,Planta',
+      '9876543-2,Pedro Ramírez López,B,9,Enfermero/a,2014-08-01,Planta',
+      '11222333-4,Ana Torres Muñoz,C,12,Técnico Paramédico,2018-05-20,Plazo Fijo',
+      '15432167-8,Luis Castillo Vera,D,14,Auxiliar de Servicios,2020-01-10,Honorarios',
+      '7654321-K,Carolina Vega Díaz,E,11,Secretaria,2016-11-03,Reemplazo',
+      '13579246-5,Jorge Fuentes Pino,F,10,Auxiliar de Limpieza,2019-07-22,Planta',
+    ].join('\n'),
+  },
+  experiencia: {
+    name: 'plantilla_experiencia.csv',
+    content: [
+      'rut,tipo_periodo,fecha_inicio,fecha_fin,institucion,n_resolucion',
+      '12345678-9,Planta,2005-01-01,2009-12-31,Hospital Base Valdivia,EX-2005-001',
+      '12345678-9,Planta,2010-01-01,,APS Panguipulli,EX-2010-015',
+      '9876543-2,Honorarios,2011-03-01,2013-02-28,CESFAM Lanco,EX-2011-032',
+      '9876543-2,Plazo Fijo,2013-03-01,2014-07-31,CESFAM Lanco,EX-2013-010',
+      '9876543-2,Planta,2014-08-01,,APS Panguipulli,EX-2014-021',
+      '11222333-4,Plazo Fijo,2016-06-01,2018-05-19,Municipalidad Valdivia,EX-2016-008',
+    ].join('\n'),
+  },
+  capacitacion: {
+    name: 'plantilla_capacitacion.csv',
+    content: [
+      'rut,nombre_curso,institucion,horas,nota,nivel_tecnico,fecha,estado',
+      '12345678-9,Actualización en Medicina Familiar,ACHS,80,6.8,Avanzado,2023-08-10,Validado',
+      '12345678-9,RCP Avanzado,Cruz Roja,20,6.5,Intermedio,2022-11-15,Validado',
+      '9876543-2,Manejo de Paciente Crítico,MINSAL,60,6.0,Avanzado,2023-04-20,Validado',
+      '9876543-2,Primeros Auxilios Básicos,ACHS,16,5.5,Básico,2022-06-05,Validado',
+      '11222333-4,Técnicas de Laboratorio Clínico,SENCE,40,5.8,Intermedio,2023-01-30,Pendiente',
+      '15432167-8,Seguridad e Higiene Laboral,Mutual de Seguridad,20,6.2,Básico,2023-05-12,Validado',
+    ].join('\n'),
+  },
 };
 
 function downloadTemplate(key) {

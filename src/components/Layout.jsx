@@ -15,6 +15,7 @@ const navItems = [
   { path: '/Resolutions', label: 'Resoluciones', icon: FileText },
   { path: '/Alerts', label: 'Alertas', icon: Bell },
   { path: '/BudgetProjection', label: 'Proyección 2027', icon: TrendingUp },
+  { path: '/ImportModule', label: 'Importación', icon: UploadCloud },
 ];
 
 export default function Layout() {

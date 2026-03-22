@@ -175,61 +175,60 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Gráfico de Torta: Distribución por Categoría */}
+        <Card className="shadow-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <GraduationCap className="w-4 h-4 text-amber-500" />
-              Capacitaciones Pendientes de Validación
+              <Users className="w-4 h-4 text-indigo-500" />
+              Distribución por Categoría
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {pendingTrainings.length === 0 ? (
-              <p className="text-sm text-slate-400 py-4 text-center">Todas las capacitaciones están validadas</p>
+            {categoryData.length === 0 ? (
+              <p className="text-sm text-slate-400 py-4 text-center">Sin datos</p>
             ) : (
-              <div className="space-y-3">
-                {pendingTrainings.slice(0, 5).map(t => (
-                  <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-amber-50">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{t.course_name}</p>
-                      <p className="text-xs text-slate-500">{t.hours}h — Nota {t.grade}</p>
-                    </div>
-                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
-                      Pendiente
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={false}
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => [`${v} funcionarios`]} />
+                </PieChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Gráfico de Barras: Por tipo de contrato */}
+        <Card className="shadow-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <FileText className="w-4 h-4 text-indigo-500" />
-              Últimas Resoluciones
+              Funcionarios por Tipo de Contrato
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {resolutions.length === 0 ? (
-              <p className="text-sm text-slate-400 py-4 text-center">Sin resoluciones registradas</p>
-            ) : (
-              <div className="space-y-3">
-                {resolutions.slice(0, 5).map(r => (
-                  <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">Res. N° {r.resolution_number}</p>
-                      <p className="text-xs text-slate-500">{r.type} — {r.resolution_date}</p>
-                    </div>
-                    {r.file_url && (
-                      <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 text-xs hover:underline">
-                        Ver PDF
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={contractData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip formatter={(v) => [`${v} funcionarios`]} />
+                <Bar dataKey="cantidad" fill="#4F46E5" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

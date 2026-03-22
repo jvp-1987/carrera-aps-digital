@@ -180,6 +180,9 @@ export default function EmployeeProfile() {
                     <p className="text-indigo-100 text-sm mt-1">
                       {employee.rut} • {employee.position || 'Sin cargo'}
                     </p>
+                    <p className="text-indigo-200 text-xs mt-1">
+                      {employee.department || 'Sin establecimiento'}
+                    </p>
                   </div>
                 </div>
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/20" onClick={handleEditHeaderOpen}>

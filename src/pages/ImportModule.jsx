@@ -555,7 +555,7 @@ export default function ImportModule() {
       setImporting(true);
       const emp = valid[currentIndex];
       try {
-        await importEmployee(emp.data, rutMap);
+        await importEmployee(emp.data, rutMap, () => setRateLimitRetries(r => r + 1));
         toast.success(`"${emp.sheetName}" importado correctamente`);
         if (currentIndex < valid.length - 1) {
           setCurrentIndex(currentIndex + 1);
@@ -576,7 +576,7 @@ export default function ImportModule() {
       for (let i = 0; i < valid.length; i++) {
         const emp = valid[i];
         try {
-          await importEmployee(emp.data, rutMap);
+          await importEmployee(emp.data, rutMap, () => setRateLimitRetries(r => r + 1));
           log.ok.push(emp.sheetName);
         } catch (err) {
           log.failed.push({ name: emp.sheetName, error: err?.message || 'Error desconocido' });

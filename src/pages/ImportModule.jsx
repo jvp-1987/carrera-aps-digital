@@ -268,8 +268,12 @@ function validateEmployee(emp) {
 // ── Helpers ─────────────────────────────────────────────────────
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ── Importar un funcionario ──────────────────────────────────────
-async function importEmployee(emp, rutMap) {
+const isRateLimitError = (error) => {
+  return error?.response?.status === 429 || error?.message?.includes('rate limit') || error?.message?.includes('Rate limit');
+};
+
+// ── Importar un funcionario con reintentos en rate limit ────────
+async function importEmployee(emp, rutMap, onRateLimitRetry = null) {
   const payload = {
     rut: emp.rut,
     full_name: emp.full_name,

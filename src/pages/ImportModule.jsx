@@ -522,8 +522,11 @@ export default function ImportModule() {
       if (emp.sheetName !== sheetName) return emp;
       let finalValue = value;
       if (field === 'rut') finalValue = normalizeRUT(value);
-      else if (['current_level', 'bienios_count'].includes(field)) finalValue = value ? parseInt(value) : null;
-      else if (field === 'total_points') finalValue = value ? parseFloat(value) : null;
+      else if (['current_level', 'bienios_count'].includes(field)) {
+        finalValue = value === '' ? null : parseInt(value) || value;
+      } else if (field === 'total_points') {
+        finalValue = value === '' ? null : parseFloat(value) || value;
+      }
       const newData = { ...emp.data, [field]: finalValue };
       return { ...emp, data: newData, errors: validateEmployee(newData) };
     }));

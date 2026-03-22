@@ -86,7 +86,7 @@ export default function EmployeeProfile() {
   };
 
   const handleEditHeaderOpen = () => {
-    setHeaderForm({rut: employee.rut, full_name: employee.full_name, category: employee.category, current_level: employee.current_level, position: employee.position, bienios_count: employee.bienios_count, total_points: employee.total_points});
+    setHeaderForm({rut: employee.rut, full_name: employee.full_name, category: employee.category, current_level: employee.current_level, position: employee.position, bienios_count: employee.bienios_count, total_points: employee.total_points, status: employee.status});
     setEditingHeader(true);
   };
 

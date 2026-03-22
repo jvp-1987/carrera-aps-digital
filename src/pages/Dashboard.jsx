@@ -7,9 +7,16 @@ import { Link } from 'react-router-dom';
 import { checkPromotion, daysUntilClosure } from '@/components/calculations';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
+const CATEGORY_COLORS = {
+  A: '#7C3AED', B: '#4F46E5', C: '#0EA5E9', D: '#10B981', E: '#F59E0B', F: '#6B7280',
+};
+const CATEGORY_LABELS = {
+  A: 'Cat. A · Médicos', B: 'Cat. B · Profesionales', C: 'Cat. C', D: 'Cat. D', E: 'Cat. E', F: 'Cat. F',
+};
+
 function StatCard({ title, value, subtitle, icon: Icon, color }) {
   return (
-    <Card className="relative overflow-hidden">
+    <Card className="relative overflow-hidden shadow-card">
       <div className={`absolute top-0 right-0 w-24 h-24 -mr-6 -mt-6 rounded-full opacity-10 ${color}`} />
       <CardContent className="p-6">
         <div className="flex items-start justify-between">

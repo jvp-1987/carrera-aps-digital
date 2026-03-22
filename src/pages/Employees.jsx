@@ -358,6 +358,15 @@ export default function Employees() {
           <p className="text-slate-500">No se encontraron funcionarios</p>
         </div>
       ) : (
+        <>
+          {filtered.some(e => e.status === 'Inactivo') && (
+            <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg flex gap-2">
+              <AlertTriangle className="w-4 h-4 text-slate-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-600"><strong>Nota:</strong> Los funcionarios con estado "Inactivo" ya no pertenecen a la institución.</p>
+            </div>
+          )}
+        </> 
+      ) && (
         viewMode === 'table' ? <EmployeeTableView employees={filtered} /> :
         <EmployeeGroupView employees={filtered} />
       )}

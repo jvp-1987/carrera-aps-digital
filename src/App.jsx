@@ -17,6 +17,7 @@ import Alerts from '@/pages/Alerts';
 import BudgetProjection from '@/pages/BudgetProjection';
 import ImportModule from '@/pages/ImportModule';
 import GestionEspecial from '@/pages/GestionEspecial';
+import DataAudit from '@/pages/DataAudit';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

@@ -24,6 +24,24 @@ export default function EmployeeForm() {
     email: '', phone: '', status: 'Activo',
   });
 
+  const [duplicateWarning, setDuplicateWarning] = useState(null); // { type: 'rut'|'name', employee }
+
+  const { data: allEmployees = [] } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn: () => base44.entities.Employee.list('-created_date', 2000),
+  });
+
+  const checkDuplicates = (field, value) => {
+    if (!value) { setDuplicateWarning(null); return; }
+    const normalizedInput = field === 'rut' ? normalizeRUT(value) : value.trim().toLowerCase();
+    const match = allEmployees.find(emp => {
+      if (field === 'rut') return normalizeRUT(emp.rut) === normalizedInput;
+      if (field === 'full_name') return (emp.full_name || '').trim().toLowerCase() === normalizedInput;
+      return false;
+    });
+    setDuplicateWarning(match ? { type: field, employee: match } : null);
+  };
+
   const createMutation = useMutation({
     mutationFn: data => base44.entities.Employee.create(data),
     onSuccess: () => {

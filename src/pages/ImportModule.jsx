@@ -342,6 +342,19 @@ async function importEmployee(emp, rutMap) {
 }
 
 // ── Tarjeta de funcionario ───────────────────────────────────────
+// Helper: calcula días entre dos fechas
+function calculateDaysBetween(startStr, endStr) {
+  if (!startStr || !endStr) return null;
+  try {
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    return days > 0 ? days : null;
+  } catch {
+    return null;
+  }
+}
+
 function EmployeeCard({ emp, rutMap, onEdit }) {
   const [open, setOpen] = useState(false);
   const hasErrors = emp.errors.length > 0;

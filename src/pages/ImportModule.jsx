@@ -459,26 +459,45 @@ export default function ImportModule() {
   const handleConfirm = async () => {
     const valid = employees.filter(e => e.errors.length === 0);
     if (!valid.length) { toast.error('No hay funcionarios válidos para importar'); return; }
-    setImporting(true);
-    const log = { ok: [], failed: [] };
-
-    // Procesar de a 1 en secuencia para evitar rate limit
-    for (let i = 0; i < valid.length; i++) {
-      const emp = valid[i];
+    
+    if (singleMode) {
+      // Modo verificación: importar de a 1
+      setImporting(true);
+      const emp = valid[currentIndex];
       try {
         await importEmployee(emp.data, rutMap);
-        log.ok.push(emp.sheetName);
+        toast.success(`"${emp.sheetName}" importado correctamente`);
+        if (currentIndex < valid.length - 1) {
+          setCurrentIndex(currentIndex + 1);
+        } else {
+          toast.success('¡Todos importados!');
+          setSingleMode(false);
+          setCurrentIndex(0);
+          reset();
+        }
       } catch (err) {
-        log.failed.push({ name: emp.sheetName, error: err?.message || 'Error desconocido' });
+        toast.error(`Error en "${emp.sheetName}": ${err?.message || 'Error desconocido'}`);
       }
-      // Pausa entre funcionarios para evitar rate limit
-      if (i < valid.length - 1) await sleep(300);
+      setImporting(false);
+    } else {
+      // Modo lote: procesar todos
+      setImporting(true);
+      const log = { ok: [], failed: [] };
+      for (let i = 0; i < valid.length; i++) {
+        const emp = valid[i];
+        try {
+          await importEmployee(emp.data, rutMap);
+          log.ok.push(emp.sheetName);
+        } catch (err) {
+          log.failed.push({ name: emp.sheetName, error: err?.message || 'Error desconocido' });
+        }
+        if (i < valid.length - 1) await sleep(300);
+      }
+      setImportLog({ ...log, total: employees.length, skipped: employees.length - valid.length });
+      setStep('done');
+      setImporting(false);
+      toast.success(`${log.ok.length} funcionario(s) importado(s)`);
     }
-
-    setImportLog({ ...log, total: employees.length, skipped: employees.length - valid.length });
-    setStep('done');
-    setImporting(false);
-    toast.success(`${log.ok.length} funcionario(s) importado(s)`);
   };
 
   const reset = () => {

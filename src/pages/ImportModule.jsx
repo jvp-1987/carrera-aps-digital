@@ -252,6 +252,11 @@ async function importEmployee(emp, rutMap) {
   if (rutMap[emp.rut]) {
     await base44.entities.Employee.update(rutMap[emp.rut].id, payload);
     savedEmp = { ...rutMap[emp.rut], ...payload };
+    // Limpiar periodos y capacitaciones anteriores para evitar duplicados
+    const oldPeriods = await base44.entities.ServicePeriod.filter({ employee_id: savedEmp.id });
+    for (const p of oldPeriods) await base44.entities.ServicePeriod.delete(p.id);
+    const oldTrainings = await base44.entities.Training.filter({ employee_id: savedEmp.id });
+    for (const t of oldTrainings) await base44.entities.Training.delete(t.id);
   } else {
     savedEmp = await base44.entities.Employee.create(payload);
   }

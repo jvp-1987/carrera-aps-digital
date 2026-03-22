@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Plus, Users, Download } from 'lucide-react';
+import { Search, Plus, Users, Download, LayoutGrid, Table, Layers } from 'lucide-react';
+import EmployeeCardView from '@/components/employees/EmployeeCardView';
+import EmployeeTableView from '@/components/employees/EmployeeTableView';
+import EmployeeGroupView from '@/components/employees/EmployeeGroupView';
 
 const categoryLabels = {
   A: 'Médicos',

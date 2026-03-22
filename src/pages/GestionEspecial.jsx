@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import {
   Umbrella, Shield, Plus, Pencil, Trash2, Search,
-  Lock, FileText, AlertTriangle, CheckCircle2, Clock
+  Lock, AlertTriangle, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 // ── Helpers ───────────────────────────────────────────────────
 const DIAS_DERECHO = [

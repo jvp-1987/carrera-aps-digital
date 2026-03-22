@@ -38,6 +38,8 @@ export default function EmployeeProfile() {
   const employeeId = urlParams.get('id');
   const [editingLevel, setEditingLevel] = useState(false);
   const [levelInput, setLevelInput] = useState('');
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [headerForm, setHeaderForm] = useState({});
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ['employee', employeeId],

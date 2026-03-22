@@ -89,14 +89,30 @@ export default function Employees() {
           <h1 className="text-2xl font-bold text-slate-900">Funcionarios</h1>
           <p className="text-slate-500 text-sm mt-1">{employees.length} registrados en el sistema</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <div className="flex border rounded-md overflow-hidden">
+            {[
+              { mode: 'cards', icon: LayoutGrid, label: 'Tarjetas' },
+              { mode: 'table', icon: Table, label: 'Tabla' },
+              { mode: 'group', icon: Layers, label: 'Grupos' },
+            ].map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                title={label}
+                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${viewMode === mode ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+              >
+                <Icon className="w-3.5 h-3.5" /> {label}
+              </button>
+            ))}
+          </div>
           <Button variant="outline" onClick={exportToExcel} className="flex items-center gap-2">
-            <Download className="w-4 h-4" /> Exportar Excel
+            <Download className="w-4 h-4" /> Exportar
           </Button>
           <Link to="/EmployeeForm">
             <Button className="bg-indigo-600 hover:bg-indigo-700">
               <Plus className="w-4 h-4 mr-2" />
-              Nuevo Funcionario
+              Nuevo
             </Button>
           </Link>
         </div>

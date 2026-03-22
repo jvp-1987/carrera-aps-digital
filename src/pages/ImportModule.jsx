@@ -410,17 +410,35 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
             {[
               { key: 'rut', label: 'RUT' },
               { key: 'full_name', label: 'Nombre' },
-              { key: 'category', label: 'Categoría' },
-              { key: 'current_level', label: 'Nivel' },
+              { key: 'category', label: 'Categoría', options: ['A', 'B', 'C', 'D', 'E', 'F'] },
+              { key: 'current_level', label: 'Nivel', type: 'number', min: 1, max: 15 },
+              { key: 'bienios_count', label: 'Bienios', type: 'number' },
+              { key: 'total_points', label: 'Puntos', type: 'number' },
               { key: 'position', label: 'Cargo' },
             ].map(f => (
               <div key={f.key}>
                 <label className="text-[10px] text-slate-500">{f.label}</label>
-                <Input
-                  value={emp.data[f.key] || ''}
-                  onChange={e => onEdit(emp.sheetName, f.key, e.target.value)}
-                  className="h-7 text-xs"
-                />
+                {f.options ? (
+                  <select
+                    value={emp.data[f.key] || ''}
+                    onChange={e => onEdit(emp.sheetName, f.key, e.target.value)}
+                    className="h-7 text-xs w-full border rounded px-2 bg-white"
+                  >
+                    <option value="">Seleccionar</option>
+                    {f.options.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    type={f.type || 'text'}
+                    value={emp.data[f.key] ?? ''}
+                    onChange={e => onEdit(emp.sheetName, f.key, e.target.value)}
+                    min={f.min}
+                    max={f.max}
+                    className="h-7 text-xs"
+                  />
+                )}
               </div>
             ))}
           </div>

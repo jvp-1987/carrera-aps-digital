@@ -406,25 +406,25 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
               ))}
             </div>
           )}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { key: 'rut', label: 'RUT' },
               { key: 'full_name', label: 'Nombre' },
               { key: 'category', label: 'Categoría', options: ['A', 'B', 'C', 'D', 'E', 'F'] },
-              { key: 'current_level', label: 'Nivel', type: 'number', min: 1, max: 15 },
+              { key: 'current_level', label: 'Nivel', type: 'number' },
               { key: 'bienios_count', label: 'Bienios', type: 'number' },
               { key: 'total_points', label: 'Puntos', type: 'number' },
               { key: 'position', label: 'Cargo' },
             ].map(f => (
-              <div key={f.key}>
-                <label className="text-[10px] text-slate-500">{f.label}</label>
+              <div key={f.key} className="flex flex-col gap-1">
+                <label className="text-[10px] font-medium text-slate-600">{f.label}</label>
                 {f.options ? (
                   <select
                     value={emp.data[f.key] || ''}
                     onChange={e => onEdit(emp.sheetName, f.key, e.target.value)}
-                    className="h-7 text-xs w-full border rounded px-2 bg-white"
+                    className="h-8 px-2.5 text-xs border border-slate-300 rounded-md bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0 transition-colors"
                   >
-                    <option value="">Seleccionar</option>
+                    <option value="">—</option>
                     {f.options.map(opt => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
@@ -434,7 +434,8 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
                     type={f.type || 'text'}
                     value={emp.data[f.key] ?? ''}
                     onChange={e => onEdit(emp.sheetName, f.key, e.target.value)}
-                    className="h-7 text-xs"
+                    placeholder={f.key === 'rut' ? 'Ej: 12345678-K' : ''}
+                    className="h-8 text-xs px-2.5 border-slate-300 focus:ring-indigo-500 focus:ring-2 focus:ring-offset-0"
                   />
                 )}
               </div>

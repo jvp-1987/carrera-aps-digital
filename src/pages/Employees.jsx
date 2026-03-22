@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Plus, Users, Download, LayoutGrid, Table, Layers, AlertTriangle, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { Search, Plus, Users, Download, Table, Layers, AlertTriangle, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import EmployeeCardView from '@/components/employees/EmployeeCardView';
 import EmployeeTableView from '@/components/employees/EmployeeTableView';

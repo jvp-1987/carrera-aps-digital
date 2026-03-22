@@ -117,14 +117,31 @@ function VacacionForm({ initial, onSave, onClose, employees }) {
 // ── Formulario Sumario ────────────────────────────────────────
 const EMPTY_SUM = { rut: '', nombre: '', n_sumario: '', tipo: 'Sumario Administrativo', fecha_inicio: '', fiscal_instructor: '', cargo_imputado: '', n_resolucion: '', fecha_resolucion: '', sancion: 'Sin Sanción', estado: 'En Curso', confidencial: false, observaciones: '' };
 
-function SumarioForm({ initial, onSave, onClose }) {
+function SumarioForm({ initial, onSave, onClose, employees }) {
   const [form, setForm] = useState(initial || EMPTY_SUM);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm(f => {
+    const updated = { ...f, [k]: v };
+    if (k === 'rut') {
+      const found = employees?.find(e => e.rut?.replace(/\./g, '').trim().toUpperCase() === v.replace(/\./g, '').trim().toUpperCase());
+      if (found) { updated.nombre = found.full_name; updated.employee_id = found.id; }
+    }
+    return updated;
+  });
+
+  const matched = employees?.find(e => e.id === form.employee_id);
 
   return (
     <div className="space-y-4">
+      {matched && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded px-3 py-1.5 text-xs text-emerald-800 flex items-center gap-1">
+          ✓ Vinculado a funcionario: <strong>{matched.full_name}</strong>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
-        <div><Label className="text-xs">RUT</Label><Input value={form.rut} onChange={e => set('rut', e.target.value)} placeholder="12345678-9" /></div>
+        <div>
+          <Label className="text-xs">RUT</Label>
+          <Input value={form.rut} onChange={e => set('rut', e.target.value)} placeholder="12345678-9" />
+        </div>
         <div><Label className="text-xs">Nombre</Label><Input value={form.nombre} onChange={e => set('nombre', e.target.value)} /></div>
         <div><Label className="text-xs">N° Sumario</Label><Input value={form.n_sumario} onChange={e => set('n_sumario', e.target.value)} /></div>
         <div>

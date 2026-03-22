@@ -522,8 +522,11 @@ export default function ImportModule() {
   const handleEdit = (sheetName, field, value) => {
     setEmployees(prev => prev.map(emp => {
       if (emp.sheetName !== sheetName) return emp;
-      const newData = { ...emp.data, [field]: field === 'rut' ? normalizeRUT(value) : value };
-      if (field === 'current_level') newData.current_level = parseInt(value) || null;
+      let finalValue = value;
+      if (field === 'rut') finalValue = normalizeRUT(value);
+      else if (['current_level', 'bienios_count'].includes(field)) finalValue = value ? parseInt(value) : null;
+      else if (field === 'total_points') finalValue = value ? parseFloat(value) : null;
+      const newData = { ...emp.data, [field]: finalValue };
       return { ...emp, data: newData, errors: validateEmployee(newData) };
     }));
   };

@@ -61,6 +61,15 @@ function DuplicatesPanel({ employees, onDelete }) {
   const nameDupes = Object.values(nameMap).filter(g => g.length > 1);
   const total = rutDupes.length + nameDupes.length;
 
+  const handleDelete = async (emp) => {
+    if (!confirm(`¿Eliminar a "${emp.full_name}" (${emp.rut})? Esta acción no se puede deshacer.`)) return;
+    setDeleting(emp.id);
+    await base44.entities.Employee.delete(emp.id);
+    setDeleting(null);
+    toast.success(`"${emp.full_name}" eliminado`);
+    onDelete();
+  };
+
   if (total === 0) return null;
 
   return (

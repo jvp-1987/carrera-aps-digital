@@ -179,8 +179,8 @@ function parseCarreraSheet(sheet, sheetName) {
         experienciaRows.push({
           tipo_periodo,
           institucion,
-          fecha_inicio: findCol('inicio', 'desde', 'fecha inicio'),
-          fecha_fin: findCol('termino', 'término', 'fin', 'hasta'),
+          fecha_inicio: normalizeDateString(findCol('inicio', 'desde', 'fecha inicio')),
+          fecha_fin: normalizeDateString(findCol('termino', 'término', 'fin', 'hasta')),
           dias: findCol('dias', 'días'),
         });
       }

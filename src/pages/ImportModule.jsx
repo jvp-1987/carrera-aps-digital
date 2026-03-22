@@ -682,58 +682,49 @@ export default function ImportModule() {
                 </p>
               </div>
             )}
-            {singleMode && (
+            {importing && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-xs text-blue-800 mb-2">
-                  Verificando: <strong>{currentIndex + 1} de {employees.filter(e => e.errors.length === 0).length}</strong>
+                  Importando: <strong>{currentIndex + 1} de {validCount}</strong>
                 </p>
                 <div className="w-full bg-blue-200 rounded-full h-1.5">
                   <div
                     className="bg-blue-600 h-1.5 rounded-full transition-all"
-                    style={{ width: `${((currentIndex + 1) / employees.filter(e => e.errors.length === 0).length) * 100}%` }}
+                    style={{ width: `${((currentIndex + 1) / validCount) * 100}%` }}
                   />
                 </div>
               </div>
             )}
+            {importError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                <p className="text-xs text-red-800">
+                  ❌ Error en <strong>"{importError.emp}"</strong>: {importError.error}
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleContinueAfterError} className="bg-amber-600 hover:bg-amber-700">
+                    Continuar con el siguiente
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setImportError(null); reset(); }}>
+                    Cancelar importación
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
-              {!singleMode ? (
-                <>
-                  <Button
-                    onClick={handleConfirm}
-                    disabled={importing || validCount === 0}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    <ClipboardCheck className="w-4 h-4 mr-1" />
-                    {importing ? 'Importando...' : `Revisar y importar automático`}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    onClick={handleConfirm}
-                    disabled={importing}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    {importing ? 'Procesando...' : 'Siguiente'}
-                  </Button>
-                  <Button
-                    onClick={() => { setSingleMode(false); setCurrentIndex(0); reset(); }}
-                    disabled={importing}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    Cancelar
-                  </Button>
-                </>
-              )}
-              {!singleMode && errorCount > 0 && (
+              <Button
+                onClick={handleConfirm}
+                disabled={importing || importError || validCount === 0}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <ClipboardCheck className="w-4 h-4 mr-1" />
+                {importing ? 'Importando...' : `Importar automáticamente`}
+              </Button>
+              {errorCount > 0 && (
                 <p className="text-xs text-slate-500">{errorCount} registro(s) con errores serán omitidos.</p>
               )}
-              {!singleMode && (
-                <Button variant="ghost" size="sm" onClick={reset}>
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Cancelar
-                </Button>
-              )}
+              <Button variant="ghost" size="sm" onClick={reset} disabled={importing}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Cancelar
+              </Button>
             </div>
           </div>
         </div>

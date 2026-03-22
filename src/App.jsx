@@ -53,6 +53,7 @@ const AuthenticatedApp = () => {
         <Route path="/BudgetProjection" element={<BudgetProjection />} />
         <Route path="/ImportModule" element={<ImportModule />} />
         <Route path="/GestionEspecial" element={<GestionEspecial />} />
+        <Route path="/DataAudit" element={<DataAudit />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

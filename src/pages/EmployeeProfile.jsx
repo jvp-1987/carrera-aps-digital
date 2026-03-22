@@ -172,8 +172,8 @@ export default function EmployeeProfile() {
             <>
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div className="flex items-end gap-4">
-                  <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white font-bold text-2xl flex-shrink-0 border border-white/30">
-                    {employee.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white flex-shrink-0 border border-white/30">
+                    <UserCircle2 className="w-12 h-12" />
                   </div>
                   <div>
                     <h1 className="text-3xl font-bold">{employee.full_name}</h1>

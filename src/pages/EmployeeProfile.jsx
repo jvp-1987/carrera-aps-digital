@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign, TrendingUp, Pencil, Check, X, Umbrella, Shield } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign, TrendingUp, Pencil, Check, X, Umbrella, Shield, Zap, Award, BookOpen, Calendar } from 'lucide-react';
 import { checkPromotion, calculateTrainingGap, LEVEL_RANGES_AB, LEVEL_RANGES_CF } from '@/components/calculations';
 import { useState } from 'react';
 import { toast } from 'sonner';

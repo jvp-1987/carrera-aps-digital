@@ -268,7 +268,7 @@ export default function Employees() {
         </CardContent>
       </Card>
 
-      <DuplicatesPanel employees={employees} />
+      <DuplicatesPanel employees={employees} onDelete={() => queryClient.invalidateQueries({ queryKey: ['employees'] })} />
 
       {isLoading ? (
         <div className="flex justify-center py-20">

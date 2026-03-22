@@ -83,7 +83,7 @@ function parseCarreraSheet(sheet, sheetName) {
     const c4 = cellStr(sheet, 4, r);
 
     // Detectar inicio de secciones (busca en toda la fila)
-    if (rt.includes('experiencia') || rt.includes('periodos de servicio') || rt.includes('periodo de servicio')) {
+    if (rt.includes('experiencia') || rt.includes('periodos de servicio') || rt.includes('periodo de servicio') || rt.includes('experiencia laboral')) {
       inExperiencia = true; inCapacitacion = false; expHeaders = null; continue;
     }
     if (rt.includes('capacitaci')) {

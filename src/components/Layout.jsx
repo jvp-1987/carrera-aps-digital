@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   Users, LayoutDashboard, GraduationCap, FileText, 
-  Bell, Shield, ChevronLeft, ChevronRight, LogOut, TrendingUp, UploadCloud
+  Bell, Shield, ChevronLeft, ChevronRight, LogOut, TrendingUp, UploadCloud, Umbrella
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -16,6 +16,7 @@ const navItems = [
   { path: '/Alerts', label: 'Alertas', icon: Bell },
   { path: '/BudgetProjection', label: 'Proyección 2027', icon: TrendingUp },
   { path: '/ImportModule', label: 'Importación', icon: UploadCloud },
+  { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
 ];
 
 export default function Layout() {

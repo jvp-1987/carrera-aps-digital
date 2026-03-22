@@ -60,6 +60,7 @@ export function calculateNextBienioDate(servicePeriods, totalLeaveDays, currentB
   if (!firstStart) return null;
 
   const start = new Date(firstStart);
+  if (isNaN(start.getTime())) return null;
   const daysNeeded = (currentBienios + 1) * 730 + (totalLeaveDays || 0);
   const targetDate = new Date(start);
   targetDate.setDate(targetDate.getDate() + daysNeeded);

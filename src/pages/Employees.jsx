@@ -267,6 +267,17 @@ export default function Employees() {
                 <SelectItem value="Licencia">Licencia</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="w-full sm:w-52">
+                <SelectValue placeholder="Establecimiento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los establecimientos</SelectItem>
+                {departments.map(d => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

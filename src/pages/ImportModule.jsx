@@ -19,6 +19,25 @@ function normalizeRUT(rut) {
     .trim().toUpperCase();
 }
 
+function normalizeDateString(dateStr) {
+  if (!dateStr) return '';
+  const str = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  if (/^\d+$/.test(str)) {
+    const num = parseInt(str);
+    if (num > 0 && num < 100000) {
+      const date = new Date((num - 25569) * 86400 * 1000);
+      return date.toISOString().split('T')[0];
+    }
+  }
+  return str;
+}
+
 function cellStr(sheet, col, row) {
   const cell = sheet[XLSX.utils.encode_cell({ c: col, r: row })];
   if (!cell) return '';

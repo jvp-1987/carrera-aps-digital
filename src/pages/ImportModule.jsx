@@ -690,15 +690,7 @@ export default function ImportModule() {
                     className="bg-emerald-600 hover:bg-emerald-700"
                   >
                     <ClipboardCheck className="w-4 h-4 mr-1" />
-                    {importing ? 'Importando...' : `Importar ${validCount} funcionario(s)`}
-                  </Button>
-                  <Button
-                    onClick={() => { setSingleMode(true); setCurrentIndex(0); }}
-                    disabled={importing || validCount === 0}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Verificar de a 1
+                    {importing ? 'Importando...' : `Revisar y importar automático`}
                   </Button>
                 </>
               ) : (
@@ -716,7 +708,7 @@ export default function ImportModule() {
                     variant="ghost"
                     size="sm"
                   >
-                    Cancelar verificación
+                    Cancelar
                   </Button>
                 </>
               )}

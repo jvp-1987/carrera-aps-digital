@@ -597,6 +597,7 @@ export default function ImportModule() {
 
   const validCount = employees.filter(e => e.errors.length === 0).length;
   const errorCount = employees.length - validCount;
+  const [rateLimitRetries, setRateLimitRetries] = useState(0);
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">

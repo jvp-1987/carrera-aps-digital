@@ -56,10 +56,33 @@ export default function EmployeeProfile() {
     },
   });
 
+  const updateHeader = useMutation({
+    mutationFn: (data) => base44.entities.Employee.update(employeeId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee', employeeId] });
+      setEditingHeader(false);
+      toast.success('Datos actualizados');
+    },
+  });
+
   const handleLevelSave = () => {
     const val = parseInt(levelInput);
     if (isNaN(val) || val < 1 || val > 15) { toast.error('Nivel debe ser entre 1 y 15'); return; }
     updateLevel.mutate(val);
+  };
+
+  const handleHeaderSave = () => {
+    const level = parseInt(headerForm.current_level) || employee.current_level;
+    if (level < 1 || level > 15) { toast.error('Nivel debe ser entre 1 y 15'); return; }
+    updateHeader.mutate({
+      rut: headerForm.rut || employee.rut,
+      full_name: headerForm.full_name || employee.full_name,
+      category: headerForm.category || employee.category,
+      current_level: level,
+      position: headerForm.position || employee.position,
+      bienios_count: parseInt(headerForm.bienios_count) || employee.bienios_count,
+      total_points: parseFloat(headerForm.total_points) || employee.total_points,
+    });
   };
 
   if (isLoading) {

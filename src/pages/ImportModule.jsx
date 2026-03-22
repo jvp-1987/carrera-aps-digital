@@ -224,7 +224,7 @@ function parseCarreraSheet(sheet, sheetName) {
           horas,
           nota: findCol('nota', 'calificacion'),
           nivel_tecnico: findCol('nivel', 'tipo'),
-          fecha: fecha_fin,
+          fecha: normalizeDateString(fecha_fin),
           puntaje,
         });
       }

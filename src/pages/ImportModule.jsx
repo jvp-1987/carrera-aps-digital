@@ -362,24 +362,37 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
 
   return (
     <div className={`border rounded-lg ${hasErrors ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
-      <div className="flex items-center justify-between px-4 py-2.5 cursor-pointer" onClick={() => setOpen(o => !o)}>
-        <div className="flex items-center gap-3">
-          {hasErrors
-            ? <XCircle className="w-4 h-4 text-red-500 shrink-0" />
-            : <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
-          <div>
-            <span className="font-medium text-sm text-slate-800">{emp.sheetName}</span>
-            {emp.data.rut && <span className="ml-2 text-xs text-slate-500">{emp.data.rut}</span>}
-            {emp.data.category && emp.data.current_level && (
-              <span className="ml-2 text-xs text-slate-400">Cat. {emp.data.category} · Niv. {emp.data.current_level}</span>
-            )}
+      <div className="px-4 py-2.5 space-y-2">
+        <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between text-left hover:bg-slate-50 rounded p-1">
+          <div className="flex items-center gap-3">
+            {hasErrors
+              ? <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+              : <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
+            <div>
+              <span className="font-medium text-sm text-slate-800">{emp.sheetName}</span>
+            </div>
+            {existsInDB && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">Actualiza</Badge>}
           </div>
-          {existsInDB && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">Actualiza</Badge>}
-        </div>
-        <div className="flex items-center gap-2">
-          {hasErrors && <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">{emp.errors.length} error{emp.errors.length > 1 ? 'es' : ''}</Badge>}
-          {open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-        </div>
+          <div className="flex items-center gap-2">
+            {hasErrors && <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">{emp.errors.length} error{emp.errors.length > 1 ? 'es' : ''}</Badge>}
+            {open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+          </div>
+        </button>
+        {!open && emp.data.category && emp.data.current_level && (
+          <div className="flex gap-2 text-xs text-slate-600 px-1">
+            <span>Cat. {emp.data.category}</span>
+            <span>·</span>
+            <span>Niv. {emp.data.current_level}</span>
+            {emp.data.bienios_count !== null && <>
+              <span>·</span>
+              <span>{emp.data.bienios_count} bienios</span>
+            </>}
+            {emp.data.total_points !== null && <>
+              <span>·</span>
+              <span>{emp.data.total_points} pts</span>
+            </>}
+          </div>
+        )}
       </div>
 
       {open && (

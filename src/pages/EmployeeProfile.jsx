@@ -82,6 +82,7 @@ export default function EmployeeProfile() {
       position: headerForm.position || employee.position,
       bienios_count: parseInt(headerForm.bienios_count) || employee.bienios_count,
       total_points: parseFloat(headerForm.total_points) || employee.total_points,
+      status: headerForm.status || employee.status,
     });
   };
 

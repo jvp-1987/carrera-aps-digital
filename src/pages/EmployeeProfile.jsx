@@ -182,7 +182,7 @@ export default function EmployeeProfile() {
                     <Badge className={employee.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
                       {employee.status}
                     </Badge>
-                    <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-indigo-600" onClick={() => setHeaderForm({rut: employee.rut, full_name: employee.full_name, category: employee.category, current_level: employee.current_level, position: employee.position, bienios_count: employee.bienios_count, total_points: employee.total_points}); setEditingHeader(true);}>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-indigo-600" onClick={handleEditHeaderOpen}>
                       <Pencil className="w-3 h-3" />
                     </Button>
                   </div>

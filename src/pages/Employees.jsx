@@ -185,13 +185,17 @@ export default function Employees() {
     queryFn: () => base44.entities.Employee.list(),
   });
 
+  // Lista única de establecimientos
+  const departments = [...new Set(employees.map(e => e.department).filter(Boolean))].sort();
+
   const filtered = employees.filter(e => {
     const matchSearch = !search || 
       e.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       e.rut?.includes(search);
     const matchCategory = categoryFilter === 'all' || e.category === categoryFilter;
     const matchStatus = statusFilter === 'all' || e.status === statusFilter;
-    return matchSearch && matchCategory && matchStatus;
+    const matchDept = departmentFilter === 'all' || e.department === departmentFilter;
+    return matchSearch && matchCategory && matchStatus && matchDept;
   });
 
   return (

@@ -58,16 +58,28 @@ function parseCarreraSheet(sheet, sheetName) {
   const range = XLSX.utils.decode_range(sheet['!ref']);
   const maxRow = range.e.r;
 
-  // Buscar el header con Cat/Nivel en las primeras 10 filas (puede variar según el Excel)
+  // Fila 1 (r=0): Nombre del funcionario
+  let fullNameFromSheet = '';
+  for (let c = 0; c <= range.e.c; c++) {
+    const v = cellStr(sheet, c, 0);
+    if (v) { fullNameFromSheet = v; break; }
+  }
+
+  // Fila 2 (r=1): Encabezado de carrera "Cat. X · Nivel Y · Z pts · N bienios"
   let headerStr = '';
-  for (let r = 0; r <= Math.min(9, maxRow); r++) {
-    for (let c = 0; c <= range.e.c; c++) {
-      const v = cellStr(sheet, c, r);
-      if (v && /Cat\.\s*[A-Fa-f]/i.test(v) && /Nivel/i.test(v)) {
-        headerStr = v; break;
+  for (let c = 0; c <= range.e.c; c++) {
+    const v = cellStr(sheet, c, 1);
+    if (v && /Cat\.\s*[A-Fa-f]/i.test(v)) { headerStr = v; break; }
+  }
+  // Fallback: buscar en filas siguientes si no estaba en fila 2
+  if (!headerStr) {
+    for (let r = 2; r <= Math.min(9, maxRow); r++) {
+      for (let c = 0; c <= range.e.c; c++) {
+        const v = cellStr(sheet, c, r);
+        if (v && /Cat\.\s*[A-Fa-f]/i.test(v) && /Nivel/i.test(v)) { headerStr = v; break; }
       }
+      if (headerStr) break;
     }
-    if (headerStr) break;
   }
   const headerData = parseHeaderString(headerStr);
 

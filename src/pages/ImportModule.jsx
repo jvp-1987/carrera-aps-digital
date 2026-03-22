@@ -321,9 +321,10 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
               </div>
             ))}
           </div>
-          {emp.data.experiencia?.length > 0 && (
-            <p className="text-xs text-slate-500">{emp.data.experiencia.length} periodo(s) de servicio detectados</p>
-          )}
+          <div className="flex gap-3 text-xs text-slate-500">
+            {emp.data.experiencia?.length > 0 && <span>✓ {emp.data.experiencia.length} periodo(s) de servicio</span>}
+            {emp.data.capacitacion?.length > 0 && <span>✓ {emp.data.capacitacion.length} capacitacion(es)</span>}
+          </div>
         </div>
       )}
     </div>

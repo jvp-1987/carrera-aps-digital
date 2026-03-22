@@ -411,6 +411,7 @@ export default function GestionEspecial() {
               initial={dialogSum === 'new' ? null : dialogSum}
               onSave={d => saveSum.mutate(d)}
               onClose={() => setDialogSum(null)}
+              employees={employees}
             />
           )}
         </DialogContent>

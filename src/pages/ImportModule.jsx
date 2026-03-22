@@ -53,8 +53,8 @@ function parseCarreraSheet(sheet, sheetName) {
   const range = XLSX.utils.decode_range(sheet['!ref']);
   const maxRow = range.e.r;
 
-  // Fila 0 → header con cat/nivel/pts/bienios
-  const headerStr = cellStr(sheet, 0, 0);
+  // Fila 2 (índice 1) → header con cat/nivel/pts/bienios
+  const headerStr = cellStr(sheet, 0, 1);
   const headerData = parseHeaderString(headerStr);
 
   // Leer pares clave-valor de la sección personal (filas 2..N)

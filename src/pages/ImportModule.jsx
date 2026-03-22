@@ -280,6 +280,7 @@ async function importEmployee(emp, rutMap) {
       is_active: !e.fecha_fin,
       conflict_status: 'Sin Conflicto',
     });
+    await sleep(200);
   }
 
   // Importar capacitaciones si existen
@@ -300,6 +301,7 @@ async function importEmployee(emp, rutMap) {
       calculated_points: parseFloat((c.puntaje || '0').toString().replace(',', '.')) || 0,
       status: 'Validado',
     });
+    await sleep(200);
   }
 }
 

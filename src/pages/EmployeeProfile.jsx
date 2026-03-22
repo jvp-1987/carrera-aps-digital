@@ -159,6 +159,14 @@ export default function EmployeeProfile() {
                   <label className="text-xs font-medium text-indigo-100">Pts. Total</label>
                   <Input type="number" step="0.1" value={headerForm.total_points || employee.total_points} onChange={e => setHeaderForm({...headerForm, total_points: e.target.value})} className="text-sm h-8 mt-1" />
                 </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Estado</label>
+                  <select value={headerForm.status || employee.status} onChange={e => setHeaderForm({...headerForm, status: e.target.value})} className="h-8 px-2 text-sm border border-indigo-300 rounded-md bg-indigo-50 text-slate-900 mt-1">
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                    <option value="Licencia">Licencia</option>
+                  </select>
+                </div>
               </div>
               <div className="flex gap-2 pt-3">
                 <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold" onClick={handleHeaderSave} disabled={updateHeader.isPending}>

@@ -160,10 +160,10 @@ export default function EmployeeProfile() {
                 </div>
               </div>
               <div className="flex gap-2 pt-3">
-                <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600" onClick={handleHeaderSave} disabled={updateHeader.isPending}>
+                <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold" onClick={handleHeaderSave} disabled={updateHeader.isPending}>
                   <Check className="w-3.5 h-3.5 mr-1" /> Guardar
                 </Button>
-                <Button size="sm" variant="outline" className="border-white text-white hover:bg-white hover:text-indigo-600" onClick={() => setEditingHeader(false)}>
+                <Button size="sm" className="bg-slate-600 hover:bg-slate-700 text-white font-semibold" onClick={() => setEditingHeader(false)}>
                   <X className="w-3.5 h-3.5 mr-1" /> Cancelar
                 </Button>
               </div>

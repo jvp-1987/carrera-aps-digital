@@ -122,127 +122,166 @@ export default function EmployeeProfile() {
         <HojaVidaPDF employee={employee} />
       </div>
 
-      {/* Header */}
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-start gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xl flex-shrink-0">
-              {employee.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+      {/* Header Hero */}
+      <div className="mb-6 bg-gradient-to-br from-indigo-600 via-blue-600 to-purple-600 rounded-xl overflow-hidden text-white shadow-lg">
+        <div className="p-6 md:p-8">
+          {editingHeader ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">RUT</label>
+                  <Input value={headerForm.rut || employee.rut} onChange={e => setHeaderForm({...headerForm, rut: e.target.value})} className="text-sm h-8 mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Nombre</label>
+                  <Input value={headerForm.full_name || employee.full_name} onChange={e => setHeaderForm({...headerForm, full_name: e.target.value})} className="text-sm h-8 mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Categoría</label>
+                  <select value={headerForm.category || employee.category} onChange={e => setHeaderForm({...headerForm, category: e.target.value})} className="h-8 px-2 text-sm border border-indigo-300 rounded-md bg-indigo-50 text-slate-900 mt-1">
+                    {['A', 'B', 'C', 'D', 'E', 'F'].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Nivel</label>
+                  <Input type="number" min={1} max={15} value={headerForm.current_level || employee.current_level} onChange={e => setHeaderForm({...headerForm, current_level: e.target.value})} className="text-sm h-8 mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Cargo</label>
+                  <Input value={headerForm.position || employee.position} onChange={e => setHeaderForm({...headerForm, position: e.target.value})} className="text-sm h-8 mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Bienios</label>
+                  <Input type="number" value={headerForm.bienios_count || employee.bienios_count} onChange={e => setHeaderForm({...headerForm, bienios_count: e.target.value})} className="text-sm h-8 mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Pts. Total</label>
+                  <Input type="number" step="0.1" value={headerForm.total_points || employee.total_points} onChange={e => setHeaderForm({...headerForm, total_points: e.target.value})} className="text-sm h-8 mt-1" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-3">
+                <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600" onClick={handleHeaderSave} disabled={updateHeader.isPending}>
+                  <Check className="w-3.5 h-3.5 mr-1" /> Guardar
+                </Button>
+                <Button size="sm" variant="outline" className="border-white text-white hover:bg-white hover:text-indigo-600" onClick={() => setEditingHeader(false)}>
+                  <X className="w-3.5 h-3.5 mr-1" /> Cancelar
+                </Button>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              {editingHeader ? (
-                <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-xs font-medium text-slate-600">RUT</label>
-                      <Input value={headerForm.rut || employee.rut} onChange={e => setHeaderForm({...headerForm, rut: e.target.value})} className="text-sm h-8" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-600">Nombre</label>
-                      <Input value={headerForm.full_name || employee.full_name} onChange={e => setHeaderForm({...headerForm, full_name: e.target.value})} className="text-sm h-8" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-600">Categoría</label>
-                      <select value={headerForm.category || employee.category} onChange={e => setHeaderForm({...headerForm, category: e.target.value})} className="h-8 px-2 text-sm border border-slate-300 rounded-md bg-white">
-                        {['A', 'B', 'C', 'D', 'E', 'F'].map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-600">Nivel</label>
-                      <Input type="number" min={1} max={15} value={headerForm.current_level || employee.current_level} onChange={e => setHeaderForm({...headerForm, current_level: e.target.value})} className="text-sm h-8" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-600">Cargo</label>
-                      <Input value={headerForm.position || employee.position} onChange={e => setHeaderForm({...headerForm, position: e.target.value})} className="text-sm h-8" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-600">Bienios</label>
-                      <Input type="number" value={headerForm.bienios_count || employee.bienios_count} onChange={e => setHeaderForm({...headerForm, bienios_count: e.target.value})} className="text-sm h-8" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-600">Pts. Total</label>
-                      <Input type="number" step="0.1" value={headerForm.total_points || employee.total_points} onChange={e => setHeaderForm({...headerForm, total_points: e.target.value})} className="text-sm h-8" />
-                    </div>
+          ) : (
+            <>
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div className="flex items-end gap-4">
+                  <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white font-bold text-2xl flex-shrink-0 border border-white/30">
+                    {employee.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="flex gap-2 pt-2">
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={handleHeaderSave} disabled={updateHeader.isPending}>
-                      <Check className="w-3.5 h-3.5 mr-1" /> Guardar
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditingHeader(false)}>
-                      <X className="w-3.5 h-3.5 mr-1" /> Cancelar
-                    </Button>
+                  <div>
+                    <h1 className="text-3xl font-bold">{employee.full_name}</h1>
+                    <p className="text-indigo-100 text-sm mt-1">
+                      {employee.rut} • {employee.position || 'Sin cargo'}
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-xl font-bold text-slate-900">{employee.full_name}</h1>
-                    <Badge className={categoryColors[employee.category]}>Cat. {employee.category}</Badge>
-                    <Badge variant="outline">Nivel {employee.current_level}</Badge>
-                    <Badge className={employee.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
-                      {employee.status}
-                    </Badge>
-                    <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-indigo-600" onClick={handleEditHeaderOpen}>
-                      <Pencil className="w-3 h-3" />
-                    </Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/20" onClick={handleEditHeaderOpen}>
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap mt-4">
+                <Badge className={categoryColors[employee.category] + ' text-sm font-semibold'}>Cat. {employee.category}</Badge>
+                <Badge className="bg-white/20 text-white border-white/30 text-sm font-semibold">Nivel {employee.current_level}</Badge>
+                <Badge className={employee.status === 'Activo' ? 'bg-emerald-400 text-emerald-900' : 'bg-red-400 text-red-900'}>
+                  {employee.status}
+                </Badge>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-indigo-600">EXPERIENCIA</p>
+            <Zap className="w-4 h-4 text-indigo-500" />
+          </div>
+          <p className="text-2xl font-bold text-indigo-900">{employee.bienio_points || 0}</p>
+          <p className="text-xs text-indigo-600 mt-1">Puntos acumulados</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-emerald-600">CAPACITACIÓN</p>
+            <BookOpen className="w-4 h-4 text-emerald-500" />
+          </div>
+          <p className="text-2xl font-bold text-emerald-900">{employee.training_points || 0}</p>
+          <p className="text-xs text-emerald-600 mt-1">Puntos de cursos</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-violet-50 to-violet-100 rounded-lg p-4 border border-violet-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-violet-600">TOTAL</p>
+            <Award className="w-4 h-4 text-violet-500" />
+          </div>
+          <p className="text-2xl font-bold text-violet-900">{employee.total_points || 0}</p>
+          <p className="text-xs text-violet-600 mt-1">Puntaje total</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-blue-600">BIENIOS</p>
+            <Calendar className="w-4 h-4 text-blue-500" />
+          </div>
+          <p className="text-2xl font-bold text-blue-900">{employee.bienios_count || 0}</p>
+          <p className="text-xs text-blue-600 mt-1">Años reconocidos</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-4 border border-pink-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-pink-600">POSTÍTULO</p>
+            <GraduationCap className="w-4 h-4 text-pink-500" />
+          </div>
+          <p className="text-2xl font-bold text-pink-900">{employee.postitle_percentage || 0}%</p>
+          <p className="text-xs text-pink-600 mt-1">Asignación</p>
+        </div>
+      </div>
+
+      {/* Progress Section */}
+      <Card className="mb-6 bg-white border-slate-200">
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold text-slate-900">Progreso en Nivel {employee.current_level}</h3>
+                <span className="text-sm font-bold text-indigo-600">{Math.round(progressInLevel)}%</span>
+              </div>
+              <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all" style={{ width: `${Math.min(100, progressInLevel)}%` }} />
+              </div>
+            </div>
+
+            {/* Alerts */}
+            <div className="space-y-3">
+              {promo.eligible && (
+                <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-lg flex gap-3">
+                  <Zap className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-emerald-900">¡Apto para ascenso!</p>
+                    <p className="text-sm text-emerald-700 mt-1">Cumple puntaje para ascender a <strong>Nivel {promo.nextLevel}</strong>. Se requiere resolución para formalizar el cambio.</p>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {employee.rut} — {employee.position || 'Sin cargo'} — {employee.department || 'Sin departamento'}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Contrato: {employee.contract_type || '—'} · Ingreso: {employee.hire_date || '—'}
-                  </p>
-                </>
+                </div>
+              )}
+              {gap.gap > 0 && (
+                <div className="p-4 bg-blue-50 border border-blue-300 rounded-lg flex gap-3">
+                  <BookOpen className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-blue-900">Brecha de capacitación</p>
+                    <p className="text-sm text-blue-700 mt-1">{gap.message}. Necesita <strong>{gap.trainingGap} puntos</strong> adicionales de capacitación.</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
-
-          {/* Points Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-6 pt-6 border-t">
-            <div className="text-center">
-              <p className="text-xs text-slate-400">Pts. Experiencia</p>
-              <p className="text-lg font-bold text-indigo-600">{employee.bienio_points || 0}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-slate-400">Pts. Capacitación</p>
-              <p className="text-lg font-bold text-emerald-600">{employee.training_points || 0}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-slate-400">Pts. Total</p>
-              <p className="text-lg font-bold text-slate-900">{employee.total_points || 0}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-slate-400">Bienios</p>
-              <p className="text-lg font-bold text-blue-600">{employee.bienios_count || 0}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-slate-400">Postítulo</p>
-              <p className="text-lg font-bold text-violet-600">{employee.postitle_percentage || 0}%</p>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-slate-400 mb-1">
-              <span>Progreso Nivel {employee.current_level}</span>
-              <span>{Math.round(progressInLevel)}%</span>
-            </div>
-            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${Math.min(100, progressInLevel)}%` }} />
-            </div>
-          </div>
-
-          {/* Alerts */}
-          {promo.eligible && (
-            <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800">
-              ✅ <strong>Cumple puntaje para ascender a Nivel {promo.nextLevel}.</strong> Se requiere resolución para formalizar el cambio.
-            </div>
-          )}
-          {gap.gap > 0 && (
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              📊 {gap.message}. Necesita <strong>{gap.trainingGap} puntos</strong> adicionales de capacitación.
-            </div>
-          )}
         </CardContent>
       </Card>
 

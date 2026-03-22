@@ -108,11 +108,20 @@ function parseCarreraSheet(sheet, sheetName) {
     const c3 = norm(cellStr(sheet, 3, r));
     const c4 = cellStr(sheet, 4, r);
 
-    // Detectar inicio de secciones (busca en toda la fila)
-    if (rt.includes('experiencia') || rt.includes('periodos de servicio') || rt.includes('periodo de servicio') || rt.includes('experiencia laboral')) {
+    // Detectar inicio de sección: celda A exactamente "Experiencia" o "Capacitacion"
+    // También acepta detección en toda la fila como fallback
+    const c0raw = cellStr(sheet, 0, r);
+    const c0normRaw = norm(c0raw);
+    const isExpRow = c0normRaw === 'experiencia' || c0normRaw === 'periodos de servicio' ||
+      c0normRaw === 'experiencia laboral' ||
+      (rt.replace(/\s/g,'').length < 40 && (rt.includes('experiencia') || rt.includes('periodos de servicio')));
+    const isCapRow = c0normRaw === 'capacitacion' || c0normRaw === 'capacitaciones' ||
+      (rt.replace(/\s/g,'').length < 40 && rt.includes('capacitaci'));
+
+    if (isExpRow) {
       inExperiencia = true; inCapacitacion = false; expHeaders = null; continue;
     }
-    if (rt.includes('capacitaci')) {
+    if (isCapRow) {
       inCapacitacion = true; inExperiencia = false; capHeaders = null; continue;
     }
 

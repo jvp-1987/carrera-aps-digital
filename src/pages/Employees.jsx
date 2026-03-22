@@ -93,10 +93,20 @@ function DuplicatesPanel({ employees, onDelete }) {
               <p className="text-xs font-semibold text-red-600 mb-1">RUT duplicado: {group[0].rut}</p>
               <div className="space-y-1">
                 {group.map(e => (
-                  <Link key={e.id} to={`/EmployeeProfile?id=${e.id}`} className="flex items-center gap-3 text-sm text-slate-700 hover:text-indigo-600 hover:underline">
-                    <span className="font-medium">{e.full_name}</span>
-                    <span className="text-xs text-slate-400">Cat. {e.category} · Niv. {e.current_level} · {e.status}</span>
-                  </Link>
+                  <div key={e.id} className="flex items-center justify-between gap-3">
+                    <Link to={`/EmployeeProfile?id=${e.id}`} className="flex items-center gap-3 text-sm text-slate-700 hover:text-indigo-600 hover:underline">
+                      <span className="font-medium">{e.full_name}</span>
+                      <span className="text-xs text-slate-400">Cat. {e.category} · Niv. {e.current_level} · {e.status}</span>
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(e)}
+                      disabled={deleting === e.id}
+                      className="text-red-400 hover:text-red-600 disabled:opacity-40 p-1"
+                      title="Eliminar este duplicado"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -106,10 +116,20 @@ function DuplicatesPanel({ employees, onDelete }) {
               <p className="text-xs font-semibold text-orange-600 mb-1">Nombre duplicado: {group[0].full_name}</p>
               <div className="space-y-1">
                 {group.map(e => (
-                  <Link key={e.id} to={`/EmployeeProfile?id=${e.id}`} className="flex items-center gap-3 text-sm text-slate-700 hover:text-indigo-600 hover:underline">
-                    <span className="font-medium">{e.rut}</span>
-                    <span className="text-xs text-slate-400">Cat. {e.category} · Niv. {e.current_level} · {e.status}</span>
-                  </Link>
+                  <div key={e.id} className="flex items-center justify-between gap-3">
+                    <Link to={`/EmployeeProfile?id=${e.id}`} className="flex items-center gap-3 text-sm text-slate-700 hover:text-indigo-600 hover:underline">
+                      <span className="font-medium">{e.rut}</span>
+                      <span className="text-xs text-slate-400">Cat. {e.category} · Niv. {e.current_level} · {e.status}</span>
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(e)}
+                      disabled={deleting === e.id}
+                      className="text-red-400 hover:text-red-600 disabled:opacity-40 p-1"
+                      title="Eliminar este duplicado"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>

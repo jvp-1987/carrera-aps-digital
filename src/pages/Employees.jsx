@@ -35,8 +35,9 @@ function normalizeRUT(rut) {
   return (rut || '').toString().replace(/\./g, '').replace(/,/g, '').replace(/\s/g, '').trim().toUpperCase();
 }
 
-function DuplicatesPanel({ employees }) {
+function DuplicatesPanel({ employees, onDelete }) {
   const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(null);
 
   // Detectar duplicados por RUT normalizado
   const rutMap = {};

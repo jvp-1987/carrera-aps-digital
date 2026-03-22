@@ -81,6 +81,23 @@ export default function EmployeeForm() {
         <ArrowLeft className="w-4 h-4 mr-2" /> Volver
       </Button>
 
+      {duplicateWarning && (
+        <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">Funcionario duplicado detectado</p>
+            <p className="mt-0.5">
+              Ya existe un funcionario con ese {duplicateWarning.type === 'rut' ? 'RUT' : 'nombre'}:{' '}
+              <strong>{duplicateWarning.employee.full_name}</strong> — {duplicateWarning.employee.rut}
+              {' '}(Cat. {duplicateWarning.employee.category}, Nivel {duplicateWarning.employee.current_level}).
+            </p>
+            <Link to={`/EmployeeProfile?id=${duplicateWarning.employee.id}`} className="inline-flex items-center gap-1 mt-1 text-amber-700 underline font-medium hover:text-amber-900">
+              <ExternalLink className="w-3.5 h-3.5" /> Ver perfil existente
+            </Link>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Nuevo Funcionario</CardTitle>

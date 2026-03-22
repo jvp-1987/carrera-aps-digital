@@ -321,14 +321,14 @@ export default function Employees() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-36">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="Activo">Activo</SelectItem>
-                <SelectItem value="Inactivo">Inactivo</SelectItem>
-                <SelectItem value="Licencia">Licencia</SelectItem>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="Activo">✓ Activo</SelectItem>
+                <SelectItem value="Inactivo">✗ Inactivo (No pertenece)</SelectItem>
+                <SelectItem value="Licencia">📋 Licencia</SelectItem>
               </SelectContent>
             </Select>
             <Select value={departmentFilter} onValueChange={setDepartmentFilter}>

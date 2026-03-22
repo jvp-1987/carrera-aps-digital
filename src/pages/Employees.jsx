@@ -294,7 +294,6 @@ export default function Employees() {
           <p className="text-slate-500">No se encontraron funcionarios</p>
         </div>
       ) : (
-        viewMode === 'cards' ? <EmployeeCardView employees={filtered} /> :
         viewMode === 'table' ? <EmployeeTableView employees={filtered} /> :
         <EmployeeGroupView employees={filtered} />
       )}

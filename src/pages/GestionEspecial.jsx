@@ -52,7 +52,7 @@ const SANCION_COLOR = {
 // ── Formulario Vacación Progresiva ────────────────────────────
 const EMPTY_VAC = { rut: '', nombre: '', anios_servicio: '', dias_tomados: '', periodo: String(new Date().getFullYear()), estado: 'Pendiente', resolution_number: '', fecha_inicio: '', fecha_fin: '' };
 
-function VacacionForm({ initial, onSave, onClose }) {
+function VacacionForm({ initial, onSave, onClose, employees }) {
   const [form, setForm] = useState(initial || EMPTY_VAC);
   const set = (k, v) => setForm(f => {
     const updated = { ...f, [k]: v };

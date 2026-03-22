@@ -30,6 +30,85 @@ const categoryColors = {
   F: 'bg-slate-100 text-slate-700',
 };
 
+function normalizeRUT(rut) {
+  return (rut || '').toString().replace(/\./g, '').replace(/,/g, '').replace(/\s/g, '').trim().toUpperCase();
+}
+
+function DuplicatesPanel({ employees }) {
+  const [open, setOpen] = useState(false);
+
+  // Detectar duplicados por RUT normalizado
+  const rutMap = {};
+  employees.forEach(e => {
+    const key = normalizeRUT(e.rut);
+    if (!key) return;
+    if (!rutMap[key]) rutMap[key] = [];
+    rutMap[key].push(e);
+  });
+
+  // Detectar duplicados por nombre (normalizado)
+  const nameMap = {};
+  employees.forEach(e => {
+    const key = (e.full_name || '').trim().toLowerCase();
+    if (!key) return;
+    if (!nameMap[key]) nameMap[key] = [];
+    nameMap[key].push(e);
+  });
+
+  const rutDupes = Object.values(rutMap).filter(g => g.length > 1);
+  const nameDupes = Object.values(nameMap).filter(g => g.length > 1);
+  const total = rutDupes.length + nameDupes.length;
+
+  if (total === 0) return null;
+
+  return (
+    <div className="mb-5 border border-amber-300 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-amber-50 hover:bg-amber-100 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+          {total} grupo{total !== 1 ? 's' : ''} de funcionarios duplicados detectados
+          {rutDupes.length > 0 && <span className="text-xs font-normal text-amber-600">({rutDupes.length} por RUT{nameDupes.length > 0 ? `, ${nameDupes.length} por nombre` : ''})</span>}
+        </div>
+        {open ? <ChevronDown className="w-4 h-4 text-amber-500" /> : <ChevronRight className="w-4 h-4 text-amber-500" />}
+      </button>
+
+      {open && (
+        <div className="bg-white divide-y divide-slate-100 px-4 py-3 space-y-4">
+          {rutDupes.map((group, i) => (
+            <div key={`rut-${i}`}>
+              <p className="text-xs font-semibold text-red-600 mb-1">RUT duplicado: {group[0].rut}</p>
+              <div className="space-y-1">
+                {group.map(e => (
+                  <Link key={e.id} to={`/EmployeeProfile?id=${e.id}`} className="flex items-center gap-3 text-sm text-slate-700 hover:text-indigo-600 hover:underline">
+                    <span className="font-medium">{e.full_name}</span>
+                    <span className="text-xs text-slate-400">Cat. {e.category} · Niv. {e.current_level} · {e.status}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+          {nameDupes.map((group, i) => (
+            <div key={`name-${i}`}>
+              <p className="text-xs font-semibold text-orange-600 mb-1">Nombre duplicado: {group[0].full_name}</p>
+              <div className="space-y-1">
+                {group.map(e => (
+                  <Link key={e.id} to={`/EmployeeProfile?id=${e.id}`} className="flex items-center gap-3 text-sm text-slate-700 hover:text-indigo-600 hover:underline">
+                    <span className="font-medium">{e.rut}</span>
+                    <span className="text-xs text-slate-400">Cat. {e.category} · Niv. {e.current_level} · {e.status}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Employees() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');

@@ -363,6 +363,9 @@ export default function GestionEspecial() {
                         <Badge className={SANCION_COLOR[s.sancion] || ''}>{s.sancion}</Badge>
                       )}
                       <Badge className={ESTADO_SUM_COLOR[s.estado] || ''}>{s.estado}</Badge>
+                      {s.employee_id && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-indigo-500 hover:text-indigo-700" title="Ver perfil" onClick={() => navigate(`/EmployeeProfile?id=${s.employee_id}`)}><ExternalLink className="w-3.5 h-3.5" /></Button>
+                      )}
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDialogSum(s)}><Pencil className="w-3.5 h-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => deleteSum.mutate(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>

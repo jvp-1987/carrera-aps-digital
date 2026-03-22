@@ -208,7 +208,6 @@ export default function Employees() {
         <div className="flex gap-2 flex-wrap">
           <div className="flex border rounded-md overflow-hidden">
             {[
-              { mode: 'cards', icon: LayoutGrid, label: 'Tarjetas' },
               { mode: 'table', icon: Table, label: 'Tabla' },
               { mode: 'group', icon: Layers, label: 'Grupos' },
             ].map(({ mode, icon: Icon, label }) => (

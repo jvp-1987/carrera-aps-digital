@@ -65,6 +65,21 @@ export default function Dashboard() {
     return diff > 0 && diff < 90 * 24 * 60 * 60 * 1000;
   });
 
+  // Datos para gráfico de distribución por categoría
+  const categoryData = ['A', 'B', 'C', 'D', 'E', 'F']
+    .map(cat => ({
+      name: `Cat. ${cat}`,
+      value: employees.filter(e => e.category === cat).length,
+      color: CATEGORY_COLORS[cat],
+    }))
+    .filter(d => d.value > 0);
+
+  // Datos para gráfico de barras por contrato
+  const contractData = ['Planta', 'Plazo Fijo', 'Honorarios', 'Reemplazo'].map(ct => ({
+    name: ct,
+    cantidad: employees.filter(e => e.contract_type === ct).length,
+  }));
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">

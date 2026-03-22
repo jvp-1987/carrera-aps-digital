@@ -550,6 +550,13 @@ export default function ImportModule() {
     const valid = employees.filter(e => e.errors.length === 0);
     if (!valid.length) { toast.error('No hay funcionarios válidos para importar'); return; }
     
+    if (!singleMode) {
+      // Iniciar modo automático de a 1
+      setSingleMode(true);
+      setCurrentIndex(0);
+      return;
+    }
+    
     if (singleMode) {
       // Modo verificación: importar de a 1
       setImporting(true);

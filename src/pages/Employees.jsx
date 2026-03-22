@@ -178,6 +178,8 @@ export default function Employees() {
     URL.revokeObjectURL(url);
   };
 
+  const queryClient = useQueryClient();
+
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ['employees'],
     queryFn: () => base44.entities.Employee.list(),

@@ -237,8 +237,29 @@ async function importEmployee(emp, rutMap) {
       end_date: e.fecha_fin || '',
       institution: e.institucion || '',
       resolution_number: e.n_resolucion || '',
+      days_count: e.dias ? parseInt(e.dias) || null : null,
       is_active: !e.fecha_fin,
       conflict_status: 'Sin Conflicto',
+    });
+  }
+
+  // Importar capacitaciones si existen
+  for (const c of emp.capacitacion || []) {
+    if (!c.nombre_curso) continue;
+    const validLevels = ['Básico', 'Intermedio', 'Avanzado', 'Postgrado'];
+    const nivel = validLevels.find(l => l.toLowerCase().includes((c.nivel_tecnico || '').toLowerCase())) || 'Básico';
+    const horas = parseFloat((c.horas || '0').toString().replace(',', '.')) || 0;
+    const nota = parseFloat((c.nota || '0').toString().replace(',', '.')) || 4.0;
+    await base44.entities.Training.create({
+      employee_id: savedEmp.id,
+      course_name: c.nombre_curso,
+      institution: c.institucion || '',
+      hours: horas,
+      grade: nota,
+      technical_level: nivel,
+      completion_date: c.fecha || '',
+      calculated_points: parseFloat((c.puntaje || '0').toString().replace(',', '.')) || 0,
+      status: 'Validado',
     });
   }
 }

@@ -391,6 +391,7 @@ export default function GestionEspecial() {
               initial={dialogVac === 'new' ? null : dialogVac}
               onSave={d => saveVac.mutate(d)}
               onClose={() => setDialogVac(null)}
+              employees={employees}
             />
           )}
         </DialogContent>

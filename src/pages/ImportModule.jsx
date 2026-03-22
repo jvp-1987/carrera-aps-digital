@@ -286,20 +286,29 @@ async function importEmployee(emp, rutMap, onRateLimitRetry = null) {
   };
 
   let savedEmp;
-  if (rutMap[emp.rut]) {
-    await base44.entities.Employee.update(rutMap[emp.rut].id, payload);
-    savedEmp = { ...rutMap[emp.rut], ...payload };
-    // Limpiar periodos y capacitaciones anteriores en paralelo
-    const [oldPeriods, oldTrainings] = await Promise.all([
-      base44.entities.ServicePeriod.filter({ employee_id: savedEmp.id }),
-      base44.entities.Training.filter({ employee_id: savedEmp.id }),
-    ]);
-    await Promise.all([
-      ...oldPeriods.map(p => base44.entities.ServicePeriod.delete(p.id)),
-      ...oldTrainings.map(t => base44.entities.Training.delete(t.id)),
-    ]);
-  } else {
-    savedEmp = await base44.entities.Employee.create(payload);
+  try {
+    if (rutMap[emp.rut]) {
+      await base44.entities.Employee.update(rutMap[emp.rut].id, payload);
+      savedEmp = { ...rutMap[emp.rut], ...payload };
+      // Limpiar periodos y capacitaciones anteriores en paralelo
+      const [oldPeriods, oldTrainings] = await Promise.all([
+        base44.entities.ServicePeriod.filter({ employee_id: savedEmp.id }),
+        base44.entities.Training.filter({ employee_id: savedEmp.id }),
+      ]);
+      await Promise.all([
+        ...oldPeriods.map(p => base44.entities.ServicePeriod.delete(p.id)),
+        ...oldTrainings.map(t => base44.entities.Training.delete(t.id)),
+      ]);
+    } else {
+      savedEmp = await base44.entities.Employee.create(payload);
+    }
+  } catch (err) {
+    if (isRateLimitError(err)) {
+      if (onRateLimitRetry) onRateLimitRetry();
+      await sleep(3000);
+      return importEmployee(emp, rutMap, onRateLimitRetry);
+    }
+    throw err;
   }
 
   const validTypes = ['Planta', 'Plazo Fijo', 'Honorarios', 'Reemplazo'];

@@ -562,21 +562,68 @@ export default function ImportModule() {
             ))}
           </div>
 
-          <div className="flex items-center gap-4 pt-2 border-t">
-            <Button
-              onClick={handleConfirm}
-              disabled={importing || validCount === 0}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              <ClipboardCheck className="w-4 h-4 mr-1" />
-              {importing ? 'Importando...' : `Importar ${validCount} funcionario(s)`}
-            </Button>
-            {errorCount > 0 && (
-              <p className="text-xs text-slate-500">{errorCount} registro(s) con errores serán omitidos.</p>
+          <div className="space-y-3 pt-2 border-t">
+            {singleMode && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-800 mb-2">
+                  Verificando: <strong>{currentIndex + 1} de {employees.filter(e => e.errors.length === 0).length}</strong>
+                </p>
+                <div className="w-full bg-blue-200 rounded-full h-1.5">
+                  <div
+                    className="bg-blue-600 h-1.5 rounded-full transition-all"
+                    style={{ width: `${((currentIndex + 1) / employees.filter(e => e.errors.length === 0).length) * 100}%` }}
+                  />
+                </div>
+              </div>
             )}
-            <Button variant="ghost" size="sm" onClick={reset}>
-              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Cancelar
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {!singleMode ? (
+                <>
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={importing || validCount === 0}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    <ClipboardCheck className="w-4 h-4 mr-1" />
+                    {importing ? 'Importando...' : `Importar ${validCount} funcionario(s)`}
+                  </Button>
+                  <Button
+                    onClick={() => { setSingleMode(true); setCurrentIndex(0); }}
+                    disabled={importing || validCount === 0}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Verificar de a 1
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={importing}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {importing ? 'Procesando...' : 'Siguiente'}
+                  </Button>
+                  <Button
+                    onClick={() => { setSingleMode(false); setCurrentIndex(0); reset(); }}
+                    disabled={importing}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    Cancelar verificación
+                  </Button>
+                </>
+              )}
+              {!singleMode && errorCount > 0 && (
+                <p className="text-xs text-slate-500">{errorCount} registro(s) con errores serán omitidos.</p>
+              )}
+              {!singleMode && (
+                <Button variant="ghost" size="sm" onClick={reset}>
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Cancelar
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

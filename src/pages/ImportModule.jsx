@@ -438,14 +438,20 @@ export default function ImportModule() {
     if (!valid.length) { toast.error('No hay funcionarios válidos para importar'); return; }
     setImporting(true);
     const log = { ok: [], failed: [] };
-    for (const emp of valid) {
-      try {
-        await importEmployee(emp.data, rutMap);
-        log.ok.push(emp.sheetName);
-      } catch (err) {
-        log.failed.push({ name: emp.sheetName, error: err.message });
-      }
+
+    // Procesar en lotes de 10 en paralelo
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < valid.length; i += BATCH_SIZE) {
+      const batch = valid.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(emp => importEmployee(emp.data, rutMap).then(() => ({ name: emp.sheetName, ok: true })))
+      );
+      results.forEach((r, idx) => {
+        if (r.status === 'fulfilled') log.ok.push(batch[idx].sheetName);
+        else log.failed.push({ name: batch[idx].sheetName, error: r.reason?.message || 'Error desconocido' });
+      });
     }
+
     setImportLog({ ...log, total: employees.length, skipped: employees.length - valid.length });
     setStep('done');
     setImporting(false);

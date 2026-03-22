@@ -53,10 +53,7 @@ export default function EmployeeForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (duplicateWarning) {
-      toast.error(`Ya existe un funcionario con ese ${duplicateWarning.type === 'rut' ? 'RUT' : 'nombre'}. Revise los datos antes de continuar.`);
-      return;
-    }
+
     createMutation.mutate({
       ...form,
       current_level: parseInt(form.current_level),

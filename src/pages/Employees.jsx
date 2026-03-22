@@ -365,10 +365,9 @@ export default function Employees() {
               <p className="text-xs text-slate-600"><strong>Nota:</strong> Los funcionarios con estado "Inactivo" ya no pertenecen a la institución.</p>
             </div>
           )}
-        </> 
-      ) && (
-        viewMode === 'table' ? <EmployeeTableView employees={filtered} /> :
-        <EmployeeGroupView employees={filtered} />
+          {viewMode === 'table' ? <EmployeeTableView employees={filtered} /> :
+          <EmployeeGroupView employees={filtered} />}
+        </>
       )}
     </div>
   );

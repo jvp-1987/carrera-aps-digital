@@ -502,13 +502,20 @@ export default function ImportModule() {
             <FileSpreadsheet className="w-4 h-4 text-indigo-600" /> Formato esperado
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-xs text-slate-600 space-y-2">
-          <p>El archivo <strong>CarreraFuncionaria</strong> con una pestaña por funcionario. Cada hoja contiene:</p>
-          <ul className="list-disc list-inside space-y-0.5">
-            <li>Fila 1: <code>Cat. X · Nivel Y · Z pts · N bienios</code></li>
-            <li>Fila 3: RUT | valor | | Cargo | valor</li>
-            <li>Filas siguientes: pares clave-valor con datos personales</li>
-          </ul>
+        <CardContent className="text-xs text-slate-600 space-y-3">
+          <p>Archivo Excel con <strong>una pestaña por funcionario</strong>. Cada hoja debe tener:</p>
+          <div className="bg-slate-50 rounded-md p-3 space-y-1.5 font-mono text-[11px]">
+            <div><span className="text-slate-400">Fila 1 →</span> <span className="text-slate-800 font-semibold">Nombre completo del funcionario</span></div>
+            <div><span className="text-slate-400">Fila 2 →</span> <span className="text-indigo-700">Cat. B · Nivel 8 · 5.306 pts · 7 bienios</span></div>
+            <div><span className="text-slate-400">Fila 3+ →</span> <span className="text-slate-600">Pares clave-valor: RUT, Cargo, Profesión, etc.</span></div>
+            <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-emerald-700 font-semibold">Experiencia</span> <span className="text-slate-400">(celda A con esa palabra exacta)</span></div>
+            <div className="pl-10 text-slate-500">Headers: Establecimiento | Fecha Inicio | Término | Días</div>
+            <div className="pl-10 text-slate-500">El tipo va entre paréntesis: <em>CESFAM X (Reemplazo)</em></div>
+            <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-blue-700 font-semibold">Capacitacion</span> <span className="text-slate-400">(celda A con esa palabra exacta)</span></div>
+            <div className="pl-10 text-slate-500">Headers: Institución – Nombre curso | Horas | Nota | Nivel | Fecha</div>
+            <div className="pl-10 text-slate-500">Institución y curso separados por <em> – </em> en la misma celda</div>
+          </div>
+          <p className="text-slate-400">Tipos válidos: Planta · Plazo Fijo · Honorarios · Reemplazo &nbsp;|&nbsp; Niveles: Básico · Intermedio · Avanzado · Postgrado</p>
           <div className="pt-2">
             <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => fileInputRef.current?.click()}>
               <Upload className="w-4 h-4 mr-1" /> Seleccionar archivo Excel

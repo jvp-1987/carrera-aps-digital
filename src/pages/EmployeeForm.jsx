@@ -169,7 +169,7 @@ export default function EmployeeForm() {
               <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>
               <Button type="submit" className={`${duplicateWarning ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`} disabled={createMutation.isPending}>
                 <Save className="w-4 h-4 mr-2" />
-                {createMutation.isPending ? 'Guardando...' : 'Guardar Funcionario'}
+                {createMutation.isPending ? 'Guardando...' : duplicateWarning ? '⚠ Guardar de todas formas' : 'Guardar Funcionario'}
               </Button>
             </div>
           </form>

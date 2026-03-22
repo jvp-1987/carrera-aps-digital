@@ -550,51 +550,65 @@ export default function ImportModule() {
     const valid = employees.filter(e => e.errors.length === 0);
     if (!valid.length) { toast.error('No hay funcionarios válidos para importar'); return; }
     
-    if (!singleMode) {
-      // Iniciar modo automático de a 1
-      setSingleMode(true);
-      setCurrentIndex(0);
-      return;
-    }
+    setImporting(true);
+    setImportError(null);
+    const log = { ok: [], failed: [] };
     
-    if (singleMode) {
-      // Modo verificación: importar de a 1
-      setImporting(true);
-      const emp = valid[currentIndex];
+    for (let i = 0; i < valid.length; i++) {
+      setCurrentIndex(i);
+      const emp = valid[i];
       try {
         await importEmployee(emp.data, rutMap, () => setRateLimitRetries(r => r + 1));
-        toast.success(`"${emp.sheetName}" importado correctamente`);
-        if (currentIndex < valid.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-        } else {
-          toast.success('¡Todos importados!');
-          setSingleMode(false);
-          setCurrentIndex(0);
-          reset();
-        }
+        log.ok.push(emp.sheetName);
       } catch (err) {
-        toast.error(`Error en "${emp.sheetName}": ${err?.message || 'Error desconocido'}`);
+        const errorMsg = err?.message || 'Error desconocido';
+        log.failed.push({ name: emp.sheetName, error: errorMsg });
+        setImportError({ emp: emp.sheetName, error: errorMsg });
+        // Pausar en error para revisión
+        setImporting(false);
+        return;
       }
-      setImporting(false);
-    } else {
-      // Modo lote: procesar todos
-      setImporting(true);
-      const log = { ok: [], failed: [] };
-      for (let i = 0; i < valid.length; i++) {
-        const emp = valid[i];
-        try {
-          await importEmployee(emp.data, rutMap, () => setRateLimitRetries(r => r + 1));
-          log.ok.push(emp.sheetName);
-        } catch (err) {
-          log.failed.push({ name: emp.sheetName, error: err?.message || 'Error desconocido' });
-        }
-        if (i < valid.length - 1) await sleep(300);
-      }
-      setImportLog({ ...log, total: employees.length, skipped: employees.length - valid.length });
-      setStep('done');
-      setImporting(false);
-      toast.success(`${log.ok.length} funcionario(s) importado(s)`);
+      if (i < valid.length - 1) await sleep(300);
     }
+    
+    setImportLog({ ...log, total: employees.length, skipped: employees.length - valid.length });
+    setStep('done');
+    setImporting(false);
+    toast.success(`${log.ok.length} funcionario(s) importado(s)`);
+  };
+
+  const handleContinueAfterError = async () => {
+    const valid = employees.filter(e => e.errors.length === 0);
+    const startIndex = currentIndex + 1;
+    if (startIndex >= valid.length) {
+      setImportError(null);
+      return;
+    }
+
+    setImporting(true);
+    setImportError(null);
+    const log = { ok: [], failed: [] };
+
+    for (let i = startIndex; i < valid.length; i++) {
+      setCurrentIndex(i);
+      const emp = valid[i];
+      try {
+        await importEmployee(emp.data, rutMap, () => setRateLimitRetries(r => r + 1));
+        log.ok.push(emp.sheetName);
+      } catch (err) {
+        const errorMsg = err?.message || 'Error desconocido';
+        log.failed.push({ name: emp.sheetName, error: errorMsg });
+        setImportError({ emp: emp.sheetName, error: errorMsg });
+        setImporting(false);
+        return;
+      }
+      if (i < valid.length - 1) await sleep(300);
+    }
+
+    setImportLog({ ...log, total: employees.length, skipped: employees.length - valid.length });
+    setStep('done');
+    setImporting(false);
+    toast.success(`${log.ok.length} funcionario(s) importado(s) en total`);
   };
 
   const reset = () => {

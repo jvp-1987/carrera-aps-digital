@@ -246,7 +246,7 @@ export default function Employees() {
       </div>
 
       {/* Cards de estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
@@ -257,21 +257,6 @@ export default function Employees() {
               </div>
               <div className="bg-indigo-100 p-3 rounded-lg">
                 <Users className="w-5 h-5 text-indigo-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Nivel Promedio</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{stats.avgLevel}</p>
-                <p className="text-xs text-slate-400 mt-2">de 15 niveles</p>
-              </div>
-              <div className="bg-emerald-100 p-3 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-emerald-600" />
               </div>
             </div>
           </CardContent>

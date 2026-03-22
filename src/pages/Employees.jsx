@@ -166,50 +166,9 @@ export default function Employees() {
           <p className="text-slate-500">No se encontraron funcionarios</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(emp => (
-            <Link key={emp.id} to={`/EmployeeProfile?id=${emp.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer border-slate-200 hover:border-indigo-200">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="w-11 h-11 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-sm flex-shrink-0">
-                      {emp.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900 truncate">{emp.full_name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{emp.rut} — {emp.position || 'Sin cargo'}</p>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <Badge className={`${categoryColors[emp.category] || 'bg-slate-100 text-slate-600'} text-[10px] px-2`}>
-                          Cat. {emp.category}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] px-2">
-                          Nivel {emp.current_level || '—'}
-                        </Badge>
-                        <Badge className={`text-[10px] px-2 ${emp.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                          {emp.status || 'Activo'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <p className="text-xs text-slate-400">Bienios</p>
-                      <p className="text-sm font-semibold text-slate-700">{emp.bienios_count || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Pts. Exp.</p>
-                      <p className="text-sm font-semibold text-slate-700">{emp.bienio_points || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Pts. Cap.</p>
-                      <p className="text-sm font-semibold text-slate-700">{emp.training_points || 0}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        viewMode === 'cards' ? <EmployeeCardView employees={filtered} /> :
+        viewMode === 'table' ? <EmployeeTableView employees={filtered} /> :
+        <EmployeeGroupView employees={filtered} />
       )}
     </div>
   );

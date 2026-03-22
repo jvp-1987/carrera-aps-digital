@@ -198,12 +198,24 @@ export default function Employees() {
     return matchSearch && matchCategory && matchStatus && matchDept;
   });
 
+  // Estadísticas rápidas
+  const stats = {
+    total: employees.length,
+    active: employees.filter(e => e.status === 'Activo').length,
+    categories: Object.entries(categoryLabels).map(([cat, label]) => ({
+      cat,
+      label,
+      count: employees.filter(e => e.category === cat).length
+    })),
+    avgLevel: employees.length > 0 ? (employees.reduce((sum, e) => sum + (e.current_level || 0), 0) / employees.length).toFixed(1) : 0,
+  };
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Funcionarios</h1>
-          <p className="text-slate-500 text-sm mt-1">{employees.length} registrados en el sistema</p>
+          <h1 className="text-3xl font-bold text-slate-900">Funcionarios</h1>
+          <p className="text-slate-500 text-sm mt-1">Gestión integral del personal</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <div className="flex border rounded-md overflow-hidden">

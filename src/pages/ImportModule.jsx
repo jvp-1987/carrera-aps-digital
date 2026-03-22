@@ -382,7 +382,7 @@ export default function ImportModule() {
 
   const { data: dbEmployees = [] } = useQuery({
     queryKey: ['employees-all'],
-    queryFn: () => base44.entities.Employee.list(),
+    queryFn: () => base44.entities.Employee.list('-created_date', 2000),
   });
 
   const rutMap = {};

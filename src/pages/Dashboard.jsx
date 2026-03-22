@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Users, GraduationCap, FileText, AlertTriangle, TrendingUp, Clock, Bell } from 'lucide-react';
+import { Users, GraduationCap, FileText, TrendingUp, Clock, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { checkPromotion, daysUntilClosure } from '@/components/calculations';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 function StatCard({ title, value, subtitle, icon: Icon, color }) {
   return (

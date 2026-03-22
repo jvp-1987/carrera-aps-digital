@@ -434,8 +434,6 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
                     type={f.type || 'text'}
                     value={emp.data[f.key] ?? ''}
                     onChange={e => onEdit(emp.sheetName, f.key, e.target.value)}
-                    min={f.min}
-                    max={f.max}
                     className="h-7 text-xs"
                   />
                 )}

@@ -21,7 +21,12 @@ function normalizeRUT(rut) {
 
 function cellStr(sheet, col, row) {
   const cell = sheet[XLSX.utils.encode_cell({ c: col, r: row })];
-  return cell ? String(cell.v ?? '').trim() : '';
+  if (!cell) return '';
+  // Para celdas de fecha, usar el valor formateado (cell.w) que trae DD/MM/YYYY
+  if (cell.t === 'd' || (cell.t === 'n' && cell.w && /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(cell.w))) {
+    return cell.w ? cell.w.trim() : '';
+  }
+  return String(cell.v ?? '').trim();
 }
 
 // Parsea "Cat. B · Nivel 8 · 5.306 pts · $ 961.886 · 7 bienios"

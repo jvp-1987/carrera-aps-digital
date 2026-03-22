@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign, TrendingUp, Pencil, Check, X } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign, TrendingUp, Pencil, Check, X, Umbrella, Shield } from 'lucide-react';
 import { checkPromotion, calculateTrainingGap, LEVEL_RANGES_AB, LEVEL_RANGES_CF } from '@/components/calculations';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -19,6 +19,8 @@ import DemeritTab from '@/components/profile/DemeritTab';
 import SalarialTab from '@/components/profile/SalarialTab';
 import CareerTimelineTab from '@/components/profile/CareerTimelineTab';
 import HojaVidaPDF from '@/components/profile/HojaVidaPDF';
+import VacacionesTab from '@/components/profile/VacacionesTab';
+import SumariosTab from '@/components/profile/SumariosTab';
 
 const categoryColors = {
   A: 'bg-violet-100 text-violet-700',
@@ -198,6 +200,8 @@ export default function EmployeeProfile() {
           <TabsTrigger value="demerits" className="gap-1.5"><AlertTriangle className="w-4 h-4" /> Demérito</TabsTrigger>
           <TabsTrigger value="salarial" className="gap-1.5"><DollarSign className="w-4 h-4" /> Remuneraciones</TabsTrigger>
           <TabsTrigger value="career" className="gap-1.5"><TrendingUp className="w-4 h-4" /> Línea de Carrera</TabsTrigger>
+          <TabsTrigger value="vacaciones" className="gap-1.5"><Umbrella className="w-4 h-4" /> Vacaciones</TabsTrigger>
+          <TabsTrigger value="sumarios" className="gap-1.5"><Shield className="w-4 h-4" /> Sumarios</TabsTrigger>
         </TabsList>
         <TabsContent value="experience"><ExperienceTab employee={employee} /></TabsContent>
         <TabsContent value="training"><TrainingTab employee={employee} /></TabsContent>
@@ -207,6 +211,8 @@ export default function EmployeeProfile() {
         <TabsContent value="demerits"><DemeritTab employee={employee} /></TabsContent>
         <TabsContent value="salarial"><SalarialTab employee={employee} /></TabsContent>
         <TabsContent value="career"><CareerTimelineTab employee={employee} /></TabsContent>
+        <TabsContent value="vacaciones"><VacacionesTab employee={employee} /></TabsContent>
+        <TabsContent value="sumarios"><SumariosTab employee={employee} /></TabsContent>
       </Tabs>
     </div>
   );

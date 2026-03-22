@@ -499,8 +499,8 @@ export default function ImportModule() {
   const [step, setStep] = useState('idle');
   const [importing, setImporting] = useState(false);
   const [importLog, setImportLog] = useState(null);
-  const [singleMode, setSingleMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [importError, setImportError] = useState(null);
 
   const { data: dbEmployees = [] } = useQuery({
     queryKey: ['employees-all'],

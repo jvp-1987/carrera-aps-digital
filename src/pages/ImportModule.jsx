@@ -101,7 +101,6 @@ function parseCarreraSheet(sheet, sheetName) {
         continue;
       }
       if (expHeaders) {
-        // Busca columna de tipo con claves posibles
         const findCol = (...keys) => {
           for (const k of keys) {
             const found = Object.keys(expHeaders).find(h => h.includes(k));
@@ -109,14 +108,29 @@ function parseCarreraSheet(sheet, sheetName) {
           }
           return '';
         };
-        const tipo = findCol('tipo periodo', 'tipo', 'period');
-        if (!tipo) continue;
+        // El establecimiento contiene el tipo en paréntesis: "CESFAM X (Reemplazo)"
+        const establecimiento = findCol('establecimiento', 'institucion', 'instituc', 'lugar');
+        if (!establecimiento) continue;
+        // Saltar fila TOTAL
+        if (norm(establecimiento).includes('total')) continue;
+
+        // Extraer tipo de período desde los paréntesis
+        const tipoMatch = establecimiento.match(/\(([^)]+)\)/);
+        const tipoRaw = tipoMatch ? tipoMatch[1].toLowerCase() : '';
+        let tipo_periodo = 'Planta';
+        if (tipoRaw.includes('reemplazo')) tipo_periodo = 'Reemplazo';
+        else if (tipoRaw.includes('honorario')) tipo_periodo = 'Honorarios';
+        else if (tipoRaw.includes('contrata') || tipoRaw.includes('contrato') || tipoRaw.includes('plazo')) tipo_periodo = 'Plazo Fijo';
+        else if (tipoRaw.includes('titular') || tipoRaw.includes('planta')) tipo_periodo = 'Planta';
+
+        // Institución = establecimiento sin el paréntesis del tipo
+        const institucion = establecimiento.replace(/\s*\([^)]*\)\s*$/, '').trim();
+
         experienciaRows.push({
-          tipo_periodo: tipo,
-          fecha_inicio: findCol('fecha inicio', 'inicio', 'fecha_inicio', 'f. inicio'),
-          fecha_fin: findCol('fecha fin', 'fin', 'fecha_fin', 'f. fin', 'termino', 'término'),
-          institucion: findCol('institucion', 'instituc'),
-          n_resolucion: findCol('resolucion', 'resol', 'n°', 'numero'),
+          tipo_periodo,
+          institucion,
+          fecha_inicio: findCol('inicio', 'desde', 'fecha inicio'),
+          fecha_fin: findCol('termino', 'término', 'fin', 'hasta'),
           dias: findCol('dias', 'días'),
         });
       }
@@ -140,16 +154,28 @@ function parseCarreraSheet(sheet, sheetName) {
           }
           return '';
         };
-        const nombre = findCol('nombre curso', 'curso', 'nombre', 'actividad');
-        if (!nombre) continue;
+        // El formato es "Institución – Nombre del curso" en la primera columna
+        const cursoRaw = findCol('institucion', 'curso', 'nombre', 'actividad');
+        if (!cursoRaw) continue;
+
+        // Separar institución y nombre del curso si hay " – " o " - "
+        const partes = cursoRaw.split(/\s+[–-]\s+/);
+        const institucion = partes.length > 1 ? partes[0].trim() : '';
+        const nombre_curso = partes.length > 1 ? partes.slice(1).join(' – ').trim() : cursoRaw.trim();
+
+        const horas = findCol('hora');
+        const puntaje = findCol('punto', 'pts', 'puntaje');
+        const fecha_fin = findCol('hasta', 'termino', 'término', 'fin');
+
+        if (!nombre_curso) continue;
         capacitacionRows.push({
-          nombre_curso: nombre,
-          institucion: findCol('institucion', 'instituc'),
-          horas: findCol('hora'),
-          nota: findCol('nota', 'calificacion', 'calificación'),
-          nivel_tecnico: findCol('nivel tecnico', 'nivel', 'tipo'),
-          fecha: findCol('fecha finalizacion', 'fecha fin', 'fecha', 'termino', 'término'),
-          puntaje: findCol('puntaje', 'pts', 'punto'),
+          nombre_curso,
+          institucion,
+          horas,
+          nota: findCol('nota', 'calificacion'),
+          nivel_tecnico: findCol('nivel', 'tipo'),
+          fecha: fecha_fin,
+          puntaje,
         });
       }
       continue;

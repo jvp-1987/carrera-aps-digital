@@ -298,6 +298,9 @@ export default function GestionEspecial() {
                         <p className="text-[10px] text-slate-400">pendientes</p>
                       </div>
                       <Badge className={ESTADO_VAC_COLOR[v.estado] || ''}>{v.estado}</Badge>
+                      {v.employee_id && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-indigo-500 hover:text-indigo-700" title="Ver perfil" onClick={() => navigate(`/EmployeeProfile?id=${v.employee_id}`)}><ExternalLink className="w-3.5 h-3.5" /></Button>
+                      )}
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDialogVac(v)}><Pencil className="w-3.5 h-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => deleteVac.mutate(v.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>

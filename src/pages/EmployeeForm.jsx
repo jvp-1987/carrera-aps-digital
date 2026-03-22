@@ -70,7 +70,10 @@ export default function EmployeeForm() {
     });
   };
 
-  const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+  const update = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (field === 'rut' || field === 'full_name') checkDuplicates(field, value);
+  };
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">

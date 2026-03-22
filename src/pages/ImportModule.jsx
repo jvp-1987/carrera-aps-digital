@@ -235,6 +235,9 @@ function validateEmployee(emp) {
   return errors;
 }
 
+// ── Helpers ─────────────────────────────────────────────────────
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // ── Importar un funcionario ──────────────────────────────────────
 async function importEmployee(emp, rutMap) {
   const payload = {

@@ -125,43 +125,70 @@ export default function EmployeeProfile() {
               {employee.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-xl font-bold text-slate-900">{employee.full_name}</h1>
-                <Badge className={categoryColors[employee.category]}>Cat. {employee.category}</Badge>
-                {editingLevel ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number" min={1} max={15}
-                      value={levelInput}
-                      onChange={e => setLevelInput(e.target.value)}
-                      className="h-7 w-16 text-sm px-2"
-                      autoFocus
-                    />
-                    <Button size="icon" className="h-7 w-7 bg-emerald-600 hover:bg-emerald-700" onClick={handleLevelSave} disabled={updateLevel.isPending}>
-                      <Check className="w-3.5 h-3.5" />
+              {editingHeader ? (
+                <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">RUT</label>
+                      <Input value={headerForm.rut || employee.rut} onChange={e => setHeaderForm({...headerForm, rut: e.target.value})} className="text-sm h-8" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Nombre</label>
+                      <Input value={headerForm.full_name || employee.full_name} onChange={e => setHeaderForm({...headerForm, full_name: e.target.value})} className="text-sm h-8" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Categoría</label>
+                      <select value={headerForm.category || employee.category} onChange={e => setHeaderForm({...headerForm, category: e.target.value})} className="h-8 px-2 text-sm border border-slate-300 rounded-md bg-white">
+                        {['A', 'B', 'C', 'D', 'E', 'F'].map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Nivel</label>
+                      <Input type="number" min={1} max={15} value={headerForm.current_level || employee.current_level} onChange={e => setHeaderForm({...headerForm, current_level: e.target.value})} className="text-sm h-8" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Cargo</label>
+                      <Input value={headerForm.position || employee.position} onChange={e => setHeaderForm({...headerForm, position: e.target.value})} className="text-sm h-8" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Bienios</label>
+                      <Input type="number" value={headerForm.bienios_count || employee.bienios_count} onChange={e => setHeaderForm({...headerForm, bienios_count: e.target.value})} className="text-sm h-8" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Pts. Total</label>
+                      <Input type="number" step="0.1" value={headerForm.total_points || employee.total_points} onChange={e => setHeaderForm({...headerForm, total_points: e.target.value})} className="text-sm h-8" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={handleHeaderSave} disabled={updateHeader.isPending}>
+                      <Check className="w-3.5 h-3.5 mr-1" /> Guardar
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingLevel(false)}>
-                      <X className="w-3.5 h-3.5" />
+                    <Button size="sm" variant="outline" onClick={() => setEditingHeader(false)}>
+                      <X className="w-3.5 h-3.5 mr-1" /> Cancelar
                     </Button>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-1">
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-xl font-bold text-slate-900">{employee.full_name}</h1>
+                    <Badge className={categoryColors[employee.category]}>Cat. {employee.category}</Badge>
                     <Badge variant="outline">Nivel {employee.current_level}</Badge>
-                    <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-indigo-600" onClick={() => { setLevelInput(String(employee.current_level || '')); setEditingLevel(true); }}>
+                    <Badge className={employee.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
+                      {employee.status}
+                    </Badge>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-indigo-600" onClick={() => setHeaderForm({rut: employee.rut, full_name: employee.full_name, category: employee.category, current_level: employee.current_level, position: employee.position, bienios_count: employee.bienios_count, total_points: employee.total_points}); setEditingHeader(true);}>
                       <Pencil className="w-3 h-3" />
                     </Button>
                   </div>
-                )}
-                <Badge className={employee.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
-                  {employee.status}
-                </Badge>
-              </div>
-              <p className="text-sm text-slate-500 mt-1">
-                {employee.rut} — {employee.position || 'Sin cargo'} — {employee.department || 'Sin departamento'}
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Contrato: {employee.contract_type || '—'} · Ingreso: {employee.hire_date || '—'}
-              </p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {employee.rut} — {employee.position || 'Sin cargo'} — {employee.department || 'Sin departamento'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Contrato: {employee.contract_type || '—'} · Ingreso: {employee.hire_date || '—'}
+                  </p>
+                </>
+              )}
             </div>
           </div>
 

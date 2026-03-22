@@ -611,6 +611,7 @@ export default function ImportModule() {
 
   const reset = () => {
     setEmployees([]); setStep('idle'); setImportLog(null);
+    sessionStorage.removeItem('importedData');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 

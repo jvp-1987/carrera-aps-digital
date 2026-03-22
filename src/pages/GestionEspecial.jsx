@@ -198,12 +198,14 @@ function SumarioForm({ initial, onSave, onClose, employees }) {
 // ── Componente principal ──────────────────────────────────────
 export default function GestionEspecial() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [dialogVac, setDialogVac] = useState(null);   // null | 'new' | record
   const [dialogSum, setDialogSum] = useState(null);
 
   const { data: vacaciones = [] } = useQuery({ queryKey: ['vacaciones'], queryFn: () => base44.entities.VacacionProgresiva.list() });
   const { data: sumarios = [] } = useQuery({ queryKey: ['sumarios'], queryFn: () => base44.entities.SumarioAdministrativo.list() });
+  const { data: employees = [] } = useQuery({ queryKey: ['employees-all'], queryFn: () => base44.entities.Employee.list() });
 
   const saveVac = useMutation({
     mutationFn: (d) => d.id ? base44.entities.VacacionProgresiva.update(d.id, d) : base44.entities.VacacionProgresiva.create(d),

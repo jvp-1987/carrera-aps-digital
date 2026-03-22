@@ -57,8 +57,16 @@ function parseCarreraSheet(sheet, sheetName) {
   const headerStr = cellStr(sheet, 0, 1);
   const headerData = parseHeaderString(headerStr);
 
-  // Leer pares clave-valor de la sección personal (filas 2..N)
-  // col0=label izq, col1=valor izq, col3=label der, col4=valor der
+  // Helper: normaliza texto para comparación
+  const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+  // Helper: lee toda una fila como string normalizado para detectar secciones
+  const rowText = (r) => {
+    let t = '';
+    for (let c = 0; c <= range.e.c; c++) t += ' ' + norm(cellStr(sheet, c, r));
+    return t;
+  };
+
   const kvData = {};
   let experienciaRows = [];
   let capacitacionRows = [];
@@ -68,72 +76,80 @@ function parseCarreraSheet(sheet, sheetName) {
   let capHeaders = null;
 
   for (let r = 2; r <= maxRow; r++) {
-    const c0 = cellStr(sheet, 0, r).toLowerCase().trim();
+    const rt = rowText(r);
+    const c0 = norm(cellStr(sheet, 0, r));
     const c1 = cellStr(sheet, 1, r);
-    const c3 = cellStr(sheet, 3, r).toLowerCase().trim();
+    const c3 = norm(cellStr(sheet, 3, r));
     const c4 = cellStr(sheet, 4, r);
 
-    // Detectar inicio de secciones
-    if (c0.includes('experiencia') || c0.includes('periodos de servicio') || c0.includes('periodo de servicio')) {
+    // Detectar inicio de secciones (busca en toda la fila)
+    if (rt.includes('experiencia') || rt.includes('periodos de servicio') || rt.includes('periodo de servicio')) {
       inExperiencia = true; inCapacitacion = false; expHeaders = null; continue;
     }
-    if (c0.includes('capacitaci') || c0.includes('capacitación')) {
+    if (rt.includes('capacitaci')) {
       inCapacitacion = true; inExperiencia = false; capHeaders = null; continue;
     }
 
     if (inExperiencia) {
-      // Primera fila con contenido = headers de la tabla
-      if (!expHeaders && (c0 || c1)) {
+      // Primera fila no vacía = headers de la tabla
+      if (!expHeaders && rt.trim().length > 2) {
         expHeaders = {};
         for (let c = 0; c <= range.e.c; c++) {
-          const h = cellStr(sheet, c, r).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const h = norm(cellStr(sheet, c, r));
           if (h) expHeaders[h] = c;
         }
         continue;
       }
       if (expHeaders) {
-        const tipo = expHeaders['tipo periodo'] !== undefined ? cellStr(sheet, expHeaders['tipo periodo'], r)
-          : expHeaders['tipo'] !== undefined ? cellStr(sheet, expHeaders['tipo'], r) : '';
-        if (!tipo) continue;
-        const getE = (keys) => {
-          for (const k of keys) if (expHeaders[k] !== undefined) return cellStr(sheet, expHeaders[k], r);
+        // Busca columna de tipo con claves posibles
+        const findCol = (...keys) => {
+          for (const k of keys) {
+            const found = Object.keys(expHeaders).find(h => h.includes(k));
+            if (found !== undefined) return cellStr(sheet, expHeaders[found], r);
+          }
           return '';
         };
+        const tipo = findCol('tipo periodo', 'tipo', 'period');
+        if (!tipo) continue;
         experienciaRows.push({
           tipo_periodo: tipo,
-          fecha_inicio: getE(['fecha inicio', 'inicio', 'fecha_inicio']),
-          fecha_fin: getE(['fecha fin', 'fin', 'fecha_fin']),
-          institucion: getE(['institucion', 'institución']),
-          n_resolucion: getE(['n resolucion', 'n° resolucion', 'resolucion', 'resolución']),
+          fecha_inicio: findCol('fecha inicio', 'inicio', 'fecha_inicio', 'f. inicio'),
+          fecha_fin: findCol('fecha fin', 'fin', 'fecha_fin', 'f. fin', 'termino', 'término'),
+          institucion: findCol('institucion', 'instituc'),
+          n_resolucion: findCol('resolucion', 'resol', 'n°', 'numero'),
+          dias: findCol('dias', 'días'),
         });
       }
       continue;
     }
 
     if (inCapacitacion) {
-      if (!capHeaders && (c0 || c1)) {
+      if (!capHeaders && rt.trim().length > 2) {
         capHeaders = {};
         for (let c = 0; c <= range.e.c; c++) {
-          const h = cellStr(sheet, c, r).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const h = norm(cellStr(sheet, c, r));
           if (h) capHeaders[h] = c;
         }
         continue;
       }
       if (capHeaders) {
-        const nombre = capHeaders['nombre curso'] !== undefined ? cellStr(sheet, capHeaders['nombre curso'], r)
-          : capHeaders['curso'] !== undefined ? cellStr(sheet, capHeaders['curso'], r) : '';
-        if (!nombre) continue;
-        const getC = (keys) => {
-          for (const k of keys) if (capHeaders[k] !== undefined) return cellStr(sheet, capHeaders[k], r);
+        const findCol = (...keys) => {
+          for (const k of keys) {
+            const found = Object.keys(capHeaders).find(h => h.includes(k));
+            if (found !== undefined) return cellStr(sheet, capHeaders[found], r);
+          }
           return '';
         };
+        const nombre = findCol('nombre curso', 'curso', 'nombre', 'actividad');
+        if (!nombre) continue;
         capacitacionRows.push({
           nombre_curso: nombre,
-          institucion: getC(['institucion', 'institución']),
-          horas: getC(['horas']),
-          nota: getC(['nota']),
-          nivel_tecnico: getC(['nivel tecnico', 'nivel_tecnico', 'nivel']),
-          fecha: getC(['fecha', 'fecha finalizacion', 'fecha_finalizacion']),
+          institucion: findCol('institucion', 'instituc'),
+          horas: findCol('hora'),
+          nota: findCol('nota', 'calificacion', 'calificación'),
+          nivel_tecnico: findCol('nivel tecnico', 'nivel', 'tipo'),
+          fecha: findCol('fecha finalizacion', 'fecha fin', 'fecha', 'termino', 'término'),
+          puntaje: findCol('puntaje', 'pts', 'punto'),
         });
       }
       continue;

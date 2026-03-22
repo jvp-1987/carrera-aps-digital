@@ -521,6 +521,8 @@ export default function ImportModule() {
         return { sheetName: name, data, errors };
       });
       setEmployees(parsed);
+      // Guardar en localStorage para no tener que re-parsear
+      sessionStorage.setItem('importedData', JSON.stringify(parsed));
       setStep('preview');
       setImportLog(null);
     };

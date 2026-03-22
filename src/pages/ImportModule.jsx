@@ -442,9 +442,37 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
               </div>
             ))}
           </div>
-          <div className="flex gap-3 text-xs text-slate-500">
-            {emp.data.experiencia?.length > 0 && <span>✓ {emp.data.experiencia.length} periodo(s) de servicio</span>}
-            {emp.data.capacitacion?.length > 0 && <span>✓ {emp.data.capacitacion.length} capacitacion(es)</span>}
+          <div className="space-y-3">
+            <div className="flex gap-3 text-xs text-slate-500">
+              {emp.data.experiencia?.length > 0 && <span>✓ {emp.data.experiencia.length} periodo(s) de servicio</span>}
+              {emp.data.capacitacion?.length > 0 && <span>✓ {emp.data.capacitacion.length} capacitacion(es)</span>}
+            </div>
+            
+            {emp.data.experiencia?.length > 0 && (
+              <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                <p className="text-[10px] font-semibold text-slate-600">Períodos de Servicio:</p>
+                {emp.data.experiencia.map((exp, idx) => (
+                  <div key={idx} className="text-[10px] border-b border-slate-200 pb-2 last:border-0">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium text-slate-700">{exp.tipo_periodo}</p>
+                        <p className="text-slate-600">{exp.institucion}</p>
+                        <p className="text-slate-500 text-[9px]">
+                          {exp.fecha_inicio} {exp.fecha_fin ? `a ${exp.fecha_fin}` : '(vigente)'}
+                        </p>
+                      </div>
+                      <div className="text-right font-semibold text-indigo-600">
+                        {calculateDaysBetween(exp.fecha_inicio, exp.fecha_fin) || exp.dias ? (
+                          <span>{calculateDaysBetween(exp.fecha_inicio, exp.fecha_fin) || exp.dias} días</span>
+                        ) : (
+                          <span className="text-amber-600 text-[9px]">Sin cálculo</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

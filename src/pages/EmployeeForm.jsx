@@ -167,7 +167,7 @@ export default function EmployeeForm() {
 
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={createMutation.isPending}>
+              <Button type="submit" className={`${duplicateWarning ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`} disabled={createMutation.isPending}>
                 <Save className="w-4 h-4 mr-2" />
                 {createMutation.isPending ? 'Guardando...' : 'Guardar Funcionario'}
               </Button>

@@ -64,13 +64,27 @@ function VacacionForm({ initial, onSave, onClose, employees }) {
     if (k === 'dias_tomados') {
       updated.dias_pendientes = (parseInt(updated.dias_habiles_derecho) || 0) - (parseInt(v) || 0);
     }
+    if (k === 'rut') {
+      const found = employees?.find(e => e.rut?.replace(/\./g, '').trim().toUpperCase() === v.replace(/\./g, '').trim().toUpperCase());
+      if (found) { updated.nombre = found.full_name; updated.employee_id = found.id; }
+    }
     return updated;
   });
 
+  const matched = employees?.find(e => e.id === form.employee_id);
+
   return (
     <div className="space-y-4">
+      {matched && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded px-3 py-1.5 text-xs text-emerald-800 flex items-center gap-1">
+          ✓ Vinculado a funcionario: <strong>{matched.full_name}</strong>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
-        <div><Label className="text-xs">RUT</Label><Input value={form.rut} onChange={e => set('rut', e.target.value)} placeholder="12345678-9" /></div>
+        <div>
+          <Label className="text-xs">RUT</Label>
+          <Input value={form.rut} onChange={e => set('rut', e.target.value)} placeholder="12345678-9" />
+        </div>
         <div><Label className="text-xs">Nombre</Label><Input value={form.nombre} onChange={e => set('nombre', e.target.value)} /></div>
         <div><Label className="text-xs">Años de servicio</Label><Input type="number" value={form.anios_servicio} onChange={e => set('anios_servicio', e.target.value)} /></div>
         <div><Label className="text-xs">Período</Label><Input value={form.periodo} onChange={e => set('periodo', e.target.value)} placeholder="2024" /></div>

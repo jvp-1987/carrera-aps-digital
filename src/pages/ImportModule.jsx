@@ -58,8 +58,17 @@ function parseCarreraSheet(sheet, sheetName) {
   const range = XLSX.utils.decode_range(sheet['!ref']);
   const maxRow = range.e.r;
 
-  // Fila 2 (índice 1) → header con cat/nivel/pts/bienios
-  const headerStr = cellStr(sheet, 0, 1);
+  // Buscar el header con Cat/Nivel en las primeras 10 filas (puede variar según el Excel)
+  let headerStr = '';
+  for (let r = 0; r <= Math.min(9, maxRow); r++) {
+    for (let c = 0; c <= range.e.c; c++) {
+      const v = cellStr(sheet, c, r);
+      if (v && /Cat\.\s*[A-Fa-f]/i.test(v) && /Nivel/i.test(v)) {
+        headerStr = v; break;
+      }
+    }
+    if (headerStr) break;
+  }
   const headerData = parseHeaderString(headerStr);
 
   // Helper: normaliza texto para comparación

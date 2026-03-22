@@ -85,6 +85,11 @@ export default function EmployeeProfile() {
     });
   };
 
+  const handleEditHeaderOpen = () => {
+    setHeaderForm({rut: employee.rut, full_name: employee.full_name, category: employee.category, current_level: employee.current_level, position: employee.position, bienios_count: employee.bienios_count, total_points: employee.total_points});
+    setEditingHeader(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full">

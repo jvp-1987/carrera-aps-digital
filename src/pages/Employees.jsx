@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Plus, Users, Download, Table, Layers, AlertTriangle, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import EmployeeCardView from '@/components/employees/EmployeeCardView';
 import EmployeeTableView from '@/components/employees/EmployeeTableView';
 import EmployeeGroupView from '@/components/employees/EmployeeGroupView';
 

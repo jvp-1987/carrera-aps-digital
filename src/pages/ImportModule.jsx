@@ -237,7 +237,7 @@ function parseCarreraSheet(sheet, sheetName) {
   const fechaNacimiento = getKV('fecha nacimiento', 'nacimiento');
 
   return {
-    full_name: sheetName.trim(),
+    full_name: (fullNameFromSheet || sheetName).trim(),
     rut,
     position: cargo,
     category: headerData.category,

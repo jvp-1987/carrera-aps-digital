@@ -245,6 +245,73 @@ export default function Employees() {
         </div>
       </div>
 
+      {/* Cards de estadísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Total</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">{stats.total}</p>
+                <p className="text-xs text-slate-400 mt-2">{stats.active} activos</p>
+              </div>
+              <div className="bg-indigo-100 p-3 rounded-lg">
+                <Users className="w-5 h-5 text-indigo-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Nivel Promedio</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">{stats.avgLevel}</p>
+                <p className="text-xs text-slate-400 mt-2">de 15 niveles</p>
+              </div>
+              <div className="bg-emerald-100 p-3 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Categorías</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">{stats.categories.length}</p>
+                <p className="text-xs text-slate-400 mt-2">profesionales</p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <Briefcase className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Distribución</p>
+                <div className="flex gap-1 mt-2">
+                  {stats.categories.map(cat => (
+                    <div key={cat.cat} title={`${cat.label}: ${cat.count}`} className={`h-3 rounded-sm ${categoryColors[cat.cat]}`} style={{ width: `${(cat.count / stats.total) * 60}px` }} />
+                  ))}
+                </div>
+                <p className="text-xs text-slate-400 mt-2">por categoría</p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">

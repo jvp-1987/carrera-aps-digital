@@ -16,6 +16,7 @@ import Resolutions from '@/pages/Resolutions';
 import Alerts from '@/pages/Alerts';
 import BudgetProjection from '@/pages/BudgetProjection';
 import ImportModule from '@/pages/ImportModule';
+import GestionEspecial from '@/pages/GestionEspecial';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -50,6 +51,7 @@ const AuthenticatedApp = () => {
         <Route path="/Alerts" element={<Alerts />} />
         <Route path="/BudgetProjection" element={<BudgetProjection />} />
         <Route path="/ImportModule" element={<ImportModule />} />
+        <Route path="/GestionEspecial" element={<GestionEspecial />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

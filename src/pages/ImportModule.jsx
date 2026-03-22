@@ -264,23 +264,28 @@ async function importEmployee(emp, rutMap) {
   if (rutMap[emp.rut]) {
     await base44.entities.Employee.update(rutMap[emp.rut].id, payload);
     savedEmp = { ...rutMap[emp.rut], ...payload };
-    // Limpiar periodos y capacitaciones anteriores para evitar duplicados
-    const oldPeriods = await base44.entities.ServicePeriod.filter({ employee_id: savedEmp.id });
-    for (const p of oldPeriods) { await base44.entities.ServicePeriod.delete(p.id); await sleep(150); }
-    const oldTrainings = await base44.entities.Training.filter({ employee_id: savedEmp.id });
-    for (const t of oldTrainings) { await base44.entities.Training.delete(t.id); await sleep(150); }
+    // Limpiar periodos y capacitaciones anteriores en paralelo
+    const [oldPeriods, oldTrainings] = await Promise.all([
+      base44.entities.ServicePeriod.filter({ employee_id: savedEmp.id }),
+      base44.entities.Training.filter({ employee_id: savedEmp.id }),
+    ]);
+    await Promise.all([
+      ...oldPeriods.map(p => base44.entities.ServicePeriod.delete(p.id)),
+      ...oldTrainings.map(t => base44.entities.Training.delete(t.id)),
+    ]);
   } else {
     savedEmp = await base44.entities.Employee.create(payload);
   }
 
-  // Importar periodos de servicio si existen
-  for (const e of emp.experiencia) {
-    if (!e.tipo_periodo || !e.fecha_inicio) continue;
-    const validTypes = ['Planta', 'Plazo Fijo', 'Honorarios', 'Reemplazo'];
-    const tipo = validTypes.find(t => t.toLowerCase() === e.tipo_periodo.toLowerCase()) || 'Planta';
-    await base44.entities.ServicePeriod.create({
+  const validTypes = ['Planta', 'Plazo Fijo', 'Honorarios', 'Reemplazo'];
+  const validLevels = ['Básico', 'Intermedio', 'Avanzado', 'Postgrado'];
+
+  // Bulk crear periodos de servicio
+  const periodosValidos = (emp.experiencia || [])
+    .filter(e => e.tipo_periodo && e.fecha_inicio)
+    .map(e => ({
       employee_id: savedEmp.id,
-      period_type: tipo,
+      period_type: validTypes.find(t => t.toLowerCase() === e.tipo_periodo.toLowerCase()) || 'Planta',
       start_date: e.fecha_inicio,
       end_date: e.fecha_fin || '',
       institution: e.institucion || '',
@@ -288,30 +293,31 @@ async function importEmployee(emp, rutMap) {
       days_count: e.dias ? parseInt(e.dias) || null : null,
       is_active: !e.fecha_fin,
       conflict_status: 'Sin Conflicto',
-    });
-    await sleep(200);
-  }
+    }));
 
-  // Importar capacitaciones si existen
-  for (const c of emp.capacitacion || []) {
-    if (!c.nombre_curso) continue;
-    const validLevels = ['Básico', 'Intermedio', 'Avanzado', 'Postgrado'];
-    const nivel = validLevels.find(l => l.toLowerCase().includes((c.nivel_tecnico || '').toLowerCase())) || 'Básico';
-    const horas = parseFloat((c.horas || '0').toString().replace(',', '.')) || 0;
-    const nota = parseFloat((c.nota || '0').toString().replace(',', '.')) || 4.0;
-    await base44.entities.Training.create({
-      employee_id: savedEmp.id,
-      course_name: c.nombre_curso,
-      institution: c.institucion || '',
-      hours: horas,
-      grade: nota,
-      technical_level: nivel,
-      completion_date: c.fecha || '',
-      calculated_points: parseFloat((c.puntaje || '0').toString().replace(',', '.')) || 0,
-      status: 'Validado',
+  // Bulk crear capacitaciones
+  const capacitacionesValidas = (emp.capacitacion || [])
+    .filter(c => c.nombre_curso)
+    .map(c => {
+      const horas = parseFloat((c.horas || '0').toString().replace(',', '.')) || 0;
+      const nota = parseFloat((c.nota || '0').toString().replace(',', '.')) || 4.0;
+      return {
+        employee_id: savedEmp.id,
+        course_name: c.nombre_curso,
+        institution: c.institucion || '',
+        hours: horas,
+        grade: nota,
+        technical_level: validLevels.find(l => l.toLowerCase().includes((c.nivel_tecnico || '').toLowerCase())) || 'Básico',
+        completion_date: c.fecha || '',
+        calculated_points: parseFloat((c.puntaje || '0').toString().replace(',', '.')) || 0,
+        status: 'Validado',
+      };
     });
-    await sleep(200);
-  }
+
+  await Promise.all([
+    periodosValidos.length > 0 ? base44.entities.ServicePeriod.bulkCreate(periodosValidos) : Promise.resolve(),
+    capacitacionesValidas.length > 0 ? base44.entities.Training.bulkCreate(capacitacionesValidas) : Promise.resolve(),
+  ]);
 }
 
 // ── Tarjeta de funcionario ───────────────────────────────────────

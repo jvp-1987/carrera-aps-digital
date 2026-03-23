@@ -1,12 +1,13 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, CheckCircle2, Loader2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 function detectOverlaps(periods) {
-  // Ordenar por fecha inicio
   const sorted = [...periods]
     .filter(p => p.start_date)
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
@@ -17,8 +18,6 @@ function detectOverlaps(periods) {
       const a = sorted[i];
       const b = sorted[j];
       const aEnd = a.end_date || '9999-12-31';
-      const bEnd = b.end_date || '9999-12-31';
-      // Solapan si b empieza antes de que termine a
       if (b.start_date <= aEnd) {
         overlaps.push({ a, b });
       }
@@ -28,6 +27,9 @@ function detectOverlaps(periods) {
 }
 
 export default function AuditSolapamientos() {
+  const queryClient = useQueryClient();
+  const [deleting, setDeleting] = useState(null); // id del período que se está eliminando
+
   const { data: employees = [], isLoading: empLoading } = useQuery({
     queryKey: ['employees-overlap-audit'],
     queryFn: () => base44.entities.Employee.list('-created_date', 2000),
@@ -46,7 +48,6 @@ export default function AuditSolapamientos() {
     return m;
   }, [employees]);
 
-  // Agrupar períodos por empleado y detectar solapamientos
   const results = useMemo(() => {
     const byEmp = {};
     servicePeriods.forEach(sp => {
@@ -65,6 +66,14 @@ export default function AuditSolapamientos() {
     return conflicts.sort((a, b) => (a.emp?.full_name || '').localeCompare(b.emp?.full_name || ''));
   }, [servicePeriods, empMap]);
 
+  const handleDelete = async (period) => {
+    setDeleting(period.id);
+    await base44.entities.ServicePeriod.delete(period.id);
+    toast.success(`Período eliminado: ${period.institution} (${period.start_date})`);
+    queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
+    setDeleting(null);
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 flex justify-center items-center min-h-[300px]">
@@ -78,7 +87,7 @@ export default function AuditSolapamientos() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Auditoría de Solapamientos</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Detección de períodos de servicio con fechas superpuestas por funcionario.
+          Períodos de servicio con fechas superpuestas. Elimina el período incorrecto directamente desde aquí.
         </p>
       </div>
 
@@ -131,23 +140,31 @@ export default function AuditSolapamientos() {
                   <Badge className="bg-red-100 text-red-700 ml-auto">{overlaps.length} solapamiento(s)</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
                 {overlaps.map((ov, idx) => (
-                  <div key={idx} className="bg-red-50 border border-red-200 rounded p-3 text-xs space-y-1">
+                  <div key={idx} className="bg-red-50 border border-red-200 rounded p-3 text-xs space-y-2">
                     <p className="font-semibold text-red-700">Conflicto {idx + 1}:</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-white rounded p-2 border border-red-100">
-                        <p className="font-medium text-slate-700">{ov.a.institution}</p>
-                        <p className="text-slate-500">{ov.a.period_type}</p>
-                        <p className="text-slate-600 font-mono">{ov.a.start_date} → {ov.a.end_date || 'vigente'}</p>
-                        <p className="text-slate-400">{ov.a.days_count} días</p>
-                      </div>
-                      <div className="bg-white rounded p-2 border border-red-100">
-                        <p className="font-medium text-slate-700">{ov.b.institution}</p>
-                        <p className="text-slate-500">{ov.b.period_type}</p>
-                        <p className="text-slate-600 font-mono">{ov.b.start_date} → {ov.b.end_date || 'vigente'}</p>
-                        <p className="text-slate-400">{ov.b.days_count} días</p>
-                      </div>
+                      {[ov.a, ov.b].map((period) => (
+                        <div key={period.id} className="bg-white rounded p-2 border border-red-100 space-y-1">
+                          <p className="font-medium text-slate-700">{period.institution}</p>
+                          <p className="text-slate-500">{period.period_type}</p>
+                          <p className="text-slate-600 font-mono">{period.start_date} → {period.end_date || 'vigente'}</p>
+                          <p className="text-slate-400">{period.days_count} días</p>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="w-full h-7 text-[11px] mt-1"
+                            disabled={deleting === period.id}
+                            onClick={() => handleDelete(period)}
+                          >
+                            {deleting === period.id
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <><Trash2 className="w-3 h-3 mr-1" /> Eliminar este período</>
+                            }
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}

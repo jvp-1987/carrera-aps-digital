@@ -19,6 +19,7 @@ const navItems = [
   { path: '/ImportModule', label: 'Importación', icon: UploadCloud },
   { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
   { path: '/DataAudit', label: 'Auditoría de Datos', icon: ClipboardList },
+  { path: '/AuditSolapamientos', label: 'Solapamientos', icon: AlertTriangle },
 ];
 
 export default function Layout() {

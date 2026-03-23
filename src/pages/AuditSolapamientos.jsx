@@ -37,7 +37,9 @@ function calcDays(start, end) {
 
 // Día siguiente a una fecha ISO
 function nextDay(dateStr) {
+  if (!dateStr) return null;
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
   d.setDate(d.getDate() + 1);
   return d.toISOString().split('T')[0];
 }

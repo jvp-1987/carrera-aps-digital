@@ -116,12 +116,42 @@ function parseCapacitacionSheet(sheet, sheetName) {
         if (!cursoRaw) continue;
 
         const cursoNorm = norm(cursoRaw);
-        if (
-          cursoNorm.includes('bienio') || cursoNorm.includes('total') ||
-          cursoNorm.includes('puntaje') || /^cat\.\s*[a-f]/i.test(cursoRaw) ||
+
+        // Descartar filas que son encabezados, totales o metadatos, no cursos reales
+        const esFilaBasura = (
+          cursoNorm === 'capacitacion' ||
+          cursoNorm === 'capacitacion' ||
+          cursoNorm === 'capacitacion' ||
+          cursoNorm === '' ||
+          cursoNorm.includes('bienio') ||
+          cursoNorm.includes('total') ||
+          /^cat\.\s*[a-f]/i.test(cursoRaw) ||
           (cursoNorm.includes('nivel') && cursoNorm.includes('pts')) ||
-          cursoNorm === 'capacitacion' || cursoNorm === 'capacitación'
-        ) continue;
+          // Encabezados de columna típicos
+          cursoNorm === 'nivel' ||
+          cursoNorm === 'nivel tecnico' ||
+          cursoNorm === 'calificacion' ||
+          cursoNorm === 'nota' ||
+          cursoNorm === 'horas' ||
+          cursoNorm === 'termino' ||
+          cursoNorm === 'puntaje' ||
+          cursoNorm === 'institucion' ||
+          cursoNorm === 'curso' ||
+          cursoNorm === 'actividad' ||
+          cursoNorm === 'nombre' ||
+          cursoNorm === 'fecha' ||
+          cursoNorm === 'desde' ||
+          cursoNorm === 'hasta' ||
+          cursoNorm === 'tipo' ||
+          // Filas de totales o subtotales
+          /^total\b/i.test(cursoNorm) ||
+          /^puntaje\s*(total|acumulado)?$/i.test(cursoNorm) ||
+          /^terminos?\s*(y|de)?\s*nivel/i.test(cursoNorm) ||
+          /^calificaciones?$/i.test(cursoNorm) ||
+          // Filas que solo tienen números (no son nombres de cursos)
+          /^\d+([.,]\d+)?$/.test(cursoNorm)
+        );
+        if (esFilaBasura) continue;
 
         const partes = cursoRaw.split(/\s+[–-]\s+/);
         const institucion = partes.length > 1 ? partes[0].trim() : '';

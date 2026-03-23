@@ -58,7 +58,7 @@ const AuthenticatedApp = () => {
         <Route path="/GestionEspecial" element={<GestionEspecial />} />
         <Route path="/DataAudit" element={<DataAudit />} />
         <Route path="/AuditSolapamientos" element={<AuditSolapamientos />} />
-        <Route path="/ReimportarPeriodos" element={<ReimportarPeriodos />} />
+        <Route path="/ImportarExperiencia" element={<ImportarExperiencia />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

@@ -56,6 +56,11 @@ function extractRUTAndPeriods(sheet) {
   let periodos = [];
   let inExperiencia = false;
   let expHeaders = null;
+  
+  let inPermisos = false;
+  let permHeaders = null;
+  let permisos = [];
+
 
   const rowText = (r) => {
     let t = '';
@@ -71,10 +76,50 @@ function extractRUTAndPeriods(sheet) {
     const c4 = cellStr(sheet, 4, r);
     const rt = rowText(r);
 
-    if (!inExperiencia && /experiencia|periodos\s*de\s*servicio|servicio\s*anterior|historia\s*laboral/i.test(c0n)) {
-      inExperiencia = true; expHeaders = null; continue;
+    if (!inExperiencia && /experiencia|periodos\s*de\s*servicio|servicio\s*anterior|historia\s*laboral/i.test(c0n) && !/sin\s*goce/i.test(c0n)) {
+      inExperiencia = true; inPermisos = false; expHeaders = null; continue;
     }
-    if (inExperiencia && /^capacitaci|^entrenamiento|^formaci/i.test(c0n)) break;
+    
+    if (!inPermisos && /permiso.*sin\s*goce|licencia.*sin\s*goce|sin\s*remuneraci/i.test(c0n)) {
+      inPermisos = true; inExperiencia = false; permHeaders = null; continue;
+    }
+
+    if ((inExperiencia || inPermisos) && /^capacitaci|^entrenamiento|^formaci|feriado|licencia\s*m\w+dica/i.test(c0n)) {
+      inExperiencia = false; inPermisos = false;
+      if (/^capacitaci|^entrenamiento|^formaci/i.test(c0n)) break; // Terminar si llega a capacitaciones
+      continue;
+    }
+
+    if (inPermisos) {
+      if (!permHeaders && rt.trim().length > 2) {
+        permHeaders = {};
+        for (let c = 0; c <= range.e.c; c++) {
+          const h = norm(cellStr(sheet, c, r));
+          if (h) permHeaders[h] = c;
+        }
+        continue;
+      }
+      if (permHeaders) {
+        const findCol = (...keys) => {
+          for (const k of keys) {
+            const found = Object.keys(permHeaders).find(h => h.includes(k));
+            if (found !== undefined) return cellStr(sheet, permHeaders[found], r);
+          }
+          return '';
+        };
+
+        const startDate = normalizeDateString(findCol('inicio', 'desde', 'fecha inicio', 'fecha'));
+        if (!startDate) continue;
+
+        permisos.push({
+          start_date: startDate,
+          end_date: normalizeDateString(findCol('termino', 'término', 'fin', 'hasta')),
+          days_count: parseInt(findCol('dia', 'días', 'dias', 'cantidad')) || 0,
+          resolution_number: findCol('resol', 'documento', 'motivo', 'obs'),
+        });
+      }
+      continue;
+    }
 
     if (inExperiencia) {
       if (!expHeaders && rt.trim().length > 2) {
@@ -122,14 +167,14 @@ function extractRUTAndPeriods(sheet) {
   const rutEntry = Object.entries(kvData).find(([k]) => k.includes('rut'));
   if (rutEntry) rut = normalizeRUT(rutEntry[1]);
 
-  return { rut, periodos };
+  return { rut, periodos, permisos };
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const VALID_TYPES = ['Planta', 'Plazo Fijo', 'Honorarios', 'Reemplazo'];
 
-async function importarPeriodos(emp, periodos) {
-  // Eliminar períodos actuales con reintentos
+async function importarPeriodos(emp, periodos, permisos) {
+  // --- 1. Eliminar e importar Períodos de Servicio ---
   let oldPeriods = [];
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -167,7 +212,46 @@ async function importarPeriodos(emp, periodos) {
       catch (err) { if (err?.response?.status === 429 && attempt < 4) await sleep(3000 * (attempt + 1)); else throw err; }
     }
   }
-  return nuevos.length;
+
+  // --- 2. Eliminar e importar Permisos Sin Goce ---
+  let oldLeaves = [];
+  if (permisos && permisos.length > 0) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        oldLeaves = await base44.entities.LeaveWithoutPay.filter({ employee_id: emp.id });
+        break;
+      } catch (err) {
+        if (err?.response?.status === 429 && attempt < 4) await sleep(3000 * (attempt + 1));
+        else throw err;
+      }
+    }
+    for (const l of oldLeaves) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try { await base44.entities.LeaveWithoutPay.delete(l.id); break; }
+        catch (err) { if (err?.response?.status === 429 && attempt < 4) await sleep(2000 * (attempt + 1)); else throw err; }
+      }
+    }
+
+    const nuevosPermisos = permisos
+      .filter(p => p.start_date)
+      .map(p => ({
+        employee_id: emp.id,
+        start_date: p.start_date,
+        end_date: p.end_date || p.start_date,
+        days_count: p.days_count || 1,
+        reason: p.resolution_number ? `Excel: ${p.resolution_number}` : 'Carga masiva Excel',
+        resolution_number: p.resolution_number || '',
+      }));
+
+    if (nuevosPermisos.length > 0) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try { await base44.entities.LeaveWithoutPay.bulkCreate(nuevosPermisos); break; }
+        catch (err) { if (err?.response?.status === 429 && attempt < 4) await sleep(3000 * (attempt + 1)); else throw err; }
+      }
+    }
+  }
+
+  return { periodosCount: nuevos.length, permisosCount: permisos ? permisos.length : 0 };
 }
 
 // ── Calcular días entre dos fechas ────────────────────────────────
@@ -354,7 +438,7 @@ export default function ImportarExperiencia() {
     ? Object.entries(excelMap)
         .map(([rut, data]) => {
           const emp = rutMap[rut];
-          return emp ? { emp, periodos: data.periodos, sheetName: data.sheetName } : null;
+          return emp ? { emp, periodos: data.periodos, permisos: data.permisos, sheetName: data.sheetName } : null;
         })
         .filter(Boolean)
         .sort((a, b) => a.emp.full_name.localeCompare(b.emp.full_name))
@@ -373,7 +457,7 @@ export default function ImportarExperiencia() {
       const map = {};
       names.forEach(name => {
         const data = extractRUTAndPeriods(wb.Sheets[name]);
-        if (data?.rut) map[data.rut] = { periodos: data.periodos, sheetName: name };
+        if (data?.rut) map[data.rut] = { periodos: data.periodos, permisos: data.permisos, sheetName: name };
       });
       setExcelMap(map);
       setResults({});
@@ -385,9 +469,9 @@ export default function ImportarExperiencia() {
   const handleOne = async (item) => {
     setLoadingItem(item.emp.id);
     try {
-      const count = await importarPeriodos(item.emp, item.periodos);
-      setResults(r => ({ ...r, [item.emp.id]: count }));
-      toast.success(`${item.emp.full_name}: ${count} período(s) importados`);
+      const { periodosCount, permisosCount } = await importarPeriodos(item.emp, item.periodos, item.permisos);
+      setResults(r => ({ ...r, [item.emp.id]: periodosCount })); // count para checks green
+      toast.success(`${item.emp.full_name}: ${periodosCount} período(s) y ${permisosCount} permiso(s)`);
       queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
     } catch (err) {
       setResults(r => ({ ...r, [item.emp.id]: 'error' }));
@@ -404,8 +488,8 @@ export default function ImportarExperiencia() {
       const item = pending[i];
       setLoadingItem(item.emp.id);
       try {
-        const count = await importarPeriodos(item.emp, item.periodos);
-        setResults(r => ({ ...r, [item.emp.id]: count }));
+        const { periodosCount, permisosCount } = await importarPeriodos(item.emp, item.periodos, item.permisos);
+        setResults(r => ({ ...r, [item.emp.id]: periodosCount }));
         queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
       } catch (err) {
         setResults(r => ({ ...r, [item.emp.id]: 'error' }));
@@ -425,9 +509,9 @@ export default function ImportarExperiencia() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Importar Experiencia Laboral</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Importar Experiencia y Permisos Sin Goce</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Carga el Excel de Carrera Funcionaria y reemplaza los períodos de servicio de cada funcionario identificado.
+          Carga el Excel de Carrera Funcionaria y reemplaza los períodos de servicio y permisos sin goce de cada funcionario identificado.
           <strong className="text-slate-700"> No toca capacitaciones ni datos del empleado.</strong>
         </p>
       </div>
@@ -519,7 +603,7 @@ export default function ImportarExperiencia() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-800 truncate">{item.emp.full_name}</p>
                         <p className="text-xs text-slate-400">
-                          {item.emp.rut} · Cat. {item.emp.category} · {item.periodos.length} período(s) en Excel
+                          {item.emp.rut} · Cat. {item.emp.category} · {item.periodos?.length || 0} período(s), {item.permisos?.length || 0} permiso(s) sin goce
                         </p>
                       </div>
                     </div>

@@ -7,18 +7,57 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle2, Loader, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 export default function DataAudit() {
   const [recalculating, setRecalculating] = useState(false);
+  const [recalcProgress, setRecalcProgress] = useState({ current: 0, total: 0 });
 
   const handleRecalcularDias = async () => {
     setRecalculating(true);
+    setRecalcProgress({ current: 0, total: 0 });
     try {
-      const res = await base44.functions.invoke('recalcularDiasPeriodos', {});
-      toast.success(`${res.data.updated} períodos actualizados de ${res.data.total} totales`);
+      // Fetch todos los períodos directamente desde el frontend
+      const periodos = await base44.entities.ServicePeriod.list('-created_date', 5000);
+
+      const toUpdate = periodos.filter(p => {
+        if (!p.start_date || !p.end_date) return false;
+        const days = Math.floor((new Date(p.end_date) - new Date(p.start_date)) / 86400000) + 1;
+        return days > 0 && days !== p.days_count;
+      }).map(p => ({
+        id: p.id,
+        days: Math.floor((new Date(p.end_date) - new Date(p.start_date)) / 86400000) + 1,
+      }));
+
+      setRecalcProgress({ current: 0, total: toUpdate.length });
+
+      if (toUpdate.length === 0) {
+        toast.success('Todos los períodos ya tienen los días correctos.');
+        return;
+      }
+
+      let updated = 0;
+      for (const p of toUpdate) {
+        try {
+          await base44.entities.ServicePeriod.update(p.id, { days_count: p.days });
+          updated++;
+        } catch {
+          await sleep(1500);
+          try {
+            await base44.entities.ServicePeriod.update(p.id, { days_count: p.days });
+            updated++;
+          } catch { /* ignorar si falla reintento */ }
+        }
+        setRecalcProgress(prev => ({ ...prev, current: updated }));
+        await sleep(120);
+      }
+
+      toast.success(`${updated} de ${toUpdate.length} períodos actualizados correctamente.`);
     } catch (err) {
       toast.error('Error al recalcular: ' + err.message);
     } finally {
       setRecalculating(false);
+      setRecalcProgress({ current: 0, total: 0 });
     }
   };
 

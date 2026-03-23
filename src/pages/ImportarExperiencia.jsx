@@ -170,6 +170,167 @@ async function importarPeriodos(emp, periodos) {
   return nuevos.length;
 }
 
+// ── Calcular días entre dos fechas ────────────────────────────────
+function calcDays(start, end) {
+  if (!start || !end) return null;
+  const d = Math.floor((new Date(end) - new Date(start)) / 86400000) + 1;
+  return d > 0 ? d : null;
+}
+
+// ── Sección recálculo ─────────────────────────────────────────────
+const BATCH_SIZE = 5;
+const BATCH_PAUSE = 600; // ms entre lotes
+
+function RecalcularDias() {
+  const [status, setStatus] = useState('idle'); // idle | loading | running | done
+  const [allPeriods, setAllPeriods] = useState([]);
+  const [toFix, setToFix] = useState([]);
+  const [progress, setProgress] = useState(0);
+  const [updated, setUpdated] = useState(0);
+  const [errors, setErrors] = useState(0);
+  const cancelRef = useRef(false);
+
+  const handleAnalyze = async () => {
+    setStatus('loading');
+    const periods = await base44.entities.ServicePeriod.list(null, 9999);
+    const needFix = periods.filter(p => {
+      if (!p.start_date || !p.end_date) return false;
+      const correct = calcDays(p.start_date, p.end_date);
+      return correct !== null && p.days_count !== correct;
+    });
+    setAllPeriods(periods);
+    setToFix(needFix);
+    setStatus('idle');
+  };
+
+  const handleRun = async () => {
+    cancelRef.current = false;
+    setStatus('running');
+    setProgress(0);
+    setUpdated(0);
+    setErrors(0);
+    let done = 0;
+    let updCount = 0;
+    let errCount = 0;
+
+    for (let i = 0; i < toFix.length; i += BATCH_SIZE) {
+      if (cancelRef.current) break;
+      const batch = toFix.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (p) => {
+        const correct = calcDays(p.start_date, p.end_date);
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            await base44.entities.ServicePeriod.update(p.id, { days_count: correct });
+            updCount++;
+            break;
+          } catch (err) {
+            if (err?.response?.status === 429 && attempt < 4) await sleep(2000 * (attempt + 1));
+            else { errCount++; break; }
+          }
+        }
+      }));
+      done += batch.length;
+      setProgress(Math.round((done / toFix.length) * 100));
+      setUpdated(updCount);
+      setErrors(errCount);
+      if (i + BATCH_SIZE < toFix.length) await sleep(BATCH_PAUSE);
+    }
+    setStatus('done');
+  };
+
+  const handleReset = () => {
+    setStatus('idle');
+    setAllPeriods([]);
+    setToFix([]);
+    setProgress(0);
+    setUpdated(0);
+    setErrors(0);
+    cancelRef.current = false;
+  };
+
+  return (
+    <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-white">
+      <div className="flex items-center gap-2">
+        <Calculator className="w-4 h-4 text-indigo-500" />
+        <h2 className="text-sm font-bold text-slate-800">Recalcular días de períodos</h2>
+      </div>
+      <p className="text-xs text-slate-500">
+        Detecta períodos cuyo campo <code className="bg-slate-100 px-1 rounded">days_count</code> no coincide
+        con la diferencia real entre inicio y término, y los corrige en lotes de {BATCH_SIZE}.
+      </p>
+
+      {status === 'idle' && allPeriods.length === 0 && (
+        <Button size="sm" variant="outline" onClick={handleAnalyze}>
+          Analizar períodos
+        </Button>
+      )}
+
+      {status === 'loading' && (
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando períodos...
+        </div>
+      )}
+
+      {status === 'idle' && allPeriods.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex gap-4 text-xs text-slate-600">
+            <span>Total períodos: <strong>{allPeriods.length}</strong></span>
+            <span className={toFix.length > 0 ? 'text-amber-700 font-semibold' : 'text-emerald-700 font-semibold'}>
+              {toFix.length > 0 ? `${toFix.length} requieren corrección` : '✓ Todos correctos'}
+            </span>
+          </div>
+          {toFix.length > 0 ? (
+            <div className="flex gap-2">
+              <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={handleRun}>
+                <Calculator className="w-3.5 h-3.5 mr-1" /> Corregir {toFix.length} períodos
+              </Button>
+              <Button size="sm" variant="ghost" onClick={handleReset}>Cancelar</Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={handleReset}>
+              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Nueva verificación
+            </Button>
+          )}
+        </div>
+      )}
+
+      {status === 'running' && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-slate-600">
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+              Procesando... {Math.round((progress / 100) * toFix.length)} / {toFix.length}
+            </span>
+            <button className="text-red-500 hover:underline" onClick={() => { cancelRef.current = true; }}>
+              Detener
+            </button>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <div className="flex gap-4 text-xs">
+            {updated > 0 && <span className="text-emerald-700">✓ {updated} actualizados</span>}
+            {errors > 0 && <span className="text-red-600">✗ {errors} errores</span>}
+          </div>
+        </div>
+      )}
+
+      {status === 'done' && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-emerald-700 text-sm font-semibold">
+            <CheckCircle2 className="w-4 h-4" /> Recálculo completado
+          </div>
+          <div className="flex gap-4 text-xs">
+            <span className="text-emerald-700">✓ {updated} períodos corregidos</span>
+            {errors > 0 && <span className="text-red-600">✗ {errors} errores</span>}
+          </div>
+          <Button size="sm" variant="ghost" onClick={handleReset}>
+            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Nueva verificación
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Componente principal ─────────────────────────────────────────
 export default function ImportarExperiencia() {
   const fileInputRef = useRef(null);

@@ -205,8 +205,15 @@ function parseCarreraSheet(sheet, sheetName) {
           }
           return '';
         };
-        // El formato es "Institución – Nombre del curso" en la primera columna
-        const cursoRaw = findCol('institucion', 'curso', 'nombre', 'actividad');
+        // Primero intentar columna con nombre de curso/actividad, luego la primera columna no vacía
+        let cursoRaw = findCol('curso', 'actividad', 'nombre', 'institucion');
+        // Fallback: primera celda no vacía de la fila
+        if (!cursoRaw) {
+          for (let c = 0; c <= range.e.c; c++) {
+            const v = cellStr(sheet, c, r);
+            if (v) { cursoRaw = v; break; }
+          }
+        }
         if (!cursoRaw) continue;
 
         // Ignorar filas que son parte del encabezado de carrera (bienios, categoría, totales)

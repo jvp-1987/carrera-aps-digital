@@ -37,13 +37,23 @@ async function importEmployee(emp, rutMap) {
   const validTypes = ['Planta', 'Plazo Fijo', 'Honorarios', 'Reemplazo'];
   const validLevels = ['Básico', 'Intermedio', 'Avanzado', 'Postgrado'];
 
+  const calcDays = (start, end) => {
+    if (!start || !end) return null;
+    try {
+      const s = new Date(start), e = new Date(end);
+      const d = Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
+      return d > 0 ? d : null;
+    } catch { return null; }
+  };
+
   const periodosValidos = (emp.experiencia || [])
     .filter(e => e.tipo_periodo && e.fecha_inicio)
     .map(e => ({
       employee_id: savedEmp.id,
       period_type: validTypes.find(t => t.toLowerCase() === e.tipo_periodo.toLowerCase()) || 'Planta',
       start_date: e.fecha_inicio, end_date: e.fecha_fin || '',
-      institution: e.institucion || '', days_count: e.dias ? parseInt(e.dias) || null : null,
+      institution: e.institucion || '',
+      days_count: calcDays(e.fecha_inicio, e.fecha_fin) || (e.dias ? parseInt(e.dias) || null : null),
       is_active: !e.fecha_fin, conflict_status: 'Sin Conflicto',
     }));
 

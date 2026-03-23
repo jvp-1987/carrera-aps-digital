@@ -270,11 +270,19 @@ export default function ImportCapacitacion() {
       const emp = rutMap[item.rut];
       if (!emp) { failed.push({ name: item.sheetName, error: 'Funcionario no encontrado' }); continue; }
 
-      // Obtener capacitaciones existentes para no duplicar
+      // Obtener capacitaciones existentes para no duplicar (con reintento ante rate limit)
       let existingTrainings = [];
-      try {
-        existingTrainings = await base44.entities.Training.filter({ employee_id: emp.id });
-      } catch { existingTrainings = []; }
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          existingTrainings = await base44.entities.Training.filter({ employee_id: emp.id });
+          break;
+        } catch (err) {
+          const isRateLimit = err?.response?.status === 429 || (err?.message || '').toLowerCase().includes('rate limit');
+          if (isRateLimit && attempt < 4) {
+            await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
+          } else { break; }
+        }
+      }
 
       const existingKeys = new Set(
         existingTrainings.map(t => `${(t.course_name || '').toLowerCase().trim()}|${t.completion_date || ''}`)

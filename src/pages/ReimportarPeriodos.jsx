@@ -151,7 +151,9 @@ export default function ReimportarPeriodos() {
         const data = extractRUTAndPeriods(wb.Sheets[name]);
         return { sheetName: name, rut: data?.rut || '', periodos: data?.periodos || [] };
       });
-      setSheets(parsed);
+      // Solo mostrar hojas donde se encontró el RUT en la BD
+      const filtered = parsed.filter(s => s.rut && rutMap[s.rut]);
+      setSheets(filtered);
       setStep('preview');
     };
     reader.readAsArrayBuffer(file);

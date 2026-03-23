@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Upload, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet, User, RotateCcw, Calculator } from 'lucide-react';
+import { Upload, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet, User, RotateCcw, RefreshCw } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 

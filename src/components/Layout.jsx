@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import NotificationBell from '@/components/NotificationBell';
+import ImportProgressBanner from '@/components/ImportProgressBanner';
 
 const navItems = [
   { path: '/Dashboard', label: 'Panel', icon: LayoutDashboard },

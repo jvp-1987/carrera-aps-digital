@@ -8,6 +8,20 @@ import { AlertTriangle, CheckCircle2, Loader, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function DataAudit() {
+  const [recalculating, setRecalculating] = useState(false);
+
+  const handleRecalcularDias = async () => {
+    setRecalculating(true);
+    try {
+      const res = await base44.functions.invoke('recalcularDiasPeriodos', {});
+      toast.success(`${res.data.updated} períodos actualizados de ${res.data.total} totales`);
+    } catch (err) {
+      toast.error('Error al recalcular: ' + err.message);
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
   const { data: employees = [], isLoading: empLoading } = useQuery({
     queryKey: ['employees-audit'],
     queryFn: () => base44.entities.Employee.list('-created_date', 2000),

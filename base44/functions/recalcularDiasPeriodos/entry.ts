@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
-const BATCH_SIZE = 20;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -9,34 +9,37 @@ Deno.serve(async (req) => {
 
   const periodos = await base44.asServiceRole.entities.ServicePeriod.list('-created_date', 5000);
 
-  // Filtrar los que necesitan actualización
+  // Filtrar solo los que necesitan actualización
   const toUpdate = periodos.filter(p => {
     if (!p.start_date || !p.end_date) return false;
-    const s = new Date(p.start_date);
-    const e = new Date(p.end_date);
-    const days = Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
+    const days = Math.floor((new Date(p.end_date) - new Date(p.start_date)) / 86400000) + 1;
     return days > 0 && days !== p.days_count;
-  }).map(p => {
-    const s = new Date(p.start_date);
-    const e = new Date(p.end_date);
-    const days = Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
-    return { id: p.id, days };
-  });
+  }).map(p => ({
+    id: p.id,
+    days: Math.floor((new Date(p.end_date) - new Date(p.start_date)) / 86400000) + 1,
+  }));
 
   let updated = 0;
   const errors = [];
 
-  // Procesar en lotes paralelos
-  for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
-    const batch = toUpdate.slice(i, i + BATCH_SIZE);
-    const results = await Promise.allSettled(
-      batch.map(p => base44.asServiceRole.entities.ServicePeriod.update(p.id, { days_count: p.days }))
-    );
-    results.forEach((r, idx) => {
-      if (r.status === 'fulfilled') updated++;
-      else errors.push({ id: batch[idx].id, error: r.reason?.message });
-    });
+  // Procesar secuencialmente con pausa para evitar rate limit
+  for (const p of toUpdate) {
+    try {
+      await base44.asServiceRole.entities.ServicePeriod.update(p.id, { days_count: p.days });
+      updated++;
+      await sleep(100); // 100ms entre cada update para respetar rate limit
+    } catch (err) {
+      errors.push({ id: p.id, error: err.message });
+      if (err.message?.includes('Rate limit')) {
+        await sleep(2000); // espera extra si hay rate limit
+      }
+    }
   }
 
-  return Response.json({ updated, errors, total: periodos.length, skipped: periodos.length - toUpdate.length });
+  return Response.json({ 
+    updated, 
+    errors: errors.length, 
+    total: periodos.length, 
+    skipped: periodos.length - toUpdate.length 
+  });
 });

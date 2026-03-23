@@ -42,14 +42,14 @@ export default function DataAudit() {
           await base44.entities.ServicePeriod.update(p.id, { days_count: p.days });
           updated++;
         } catch {
-          await sleep(1500);
+          await sleep(3000);
           try {
             await base44.entities.ServicePeriod.update(p.id, { days_count: p.days });
             updated++;
           } catch { /* ignorar si falla reintento */ }
         }
         setRecalcProgress(prev => ({ ...prev, current: updated }));
-        await sleep(120);
+        await sleep(400);
       }
 
       toast.success(`${updated} de ${toUpdate.length} períodos actualizados correctamente.`);

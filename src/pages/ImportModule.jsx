@@ -587,7 +587,7 @@ export default function ImportModule() {
 
   const handleConfirm = () => {
     setCtxEmployees(localEmployees);
-    startImport(localEmployees, rutMap, 0, skipExisting);
+    startImport(localEmployees, rutMap, 0, true);
   };
 
   const handleReset = () => {

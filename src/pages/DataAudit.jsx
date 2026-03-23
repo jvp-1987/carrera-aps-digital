@@ -112,10 +112,20 @@ export default function DataAudit() {
           <h1 className="text-2xl font-bold text-slate-900">Auditoría de Datos</h1>
           <p className="text-sm text-slate-500 mt-1">Funcionarios sin información de experiencia o capacitación</p>
         </div>
-        <Button variant="outline" onClick={handleRecalcularDias} disabled={recalculating} className="flex items-center gap-2">
-          <RefreshCw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
-          {recalculating ? 'Recalculando...' : 'Recalcular días de períodos'}
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button variant="outline" onClick={handleRecalcularDias} disabled={recalculating} className="flex items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
+            {recalculating ? `Recalculando... ${recalcProgress.current}/${recalcProgress.total}` : 'Recalcular días de períodos'}
+          </Button>
+          {recalculating && recalcProgress.total > 0 && (
+            <div className="w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 rounded-full transition-all"
+                style={{ width: `${(recalcProgress.current / recalcProgress.total) * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Resumen */}

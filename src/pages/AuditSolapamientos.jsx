@@ -193,8 +193,8 @@ export default function AuditSolapamientos() {
               <CardContent className="space-y-3">
                 {overlaps.map((ov, idx) => {
                   const aEnd = ov.a.end_date;
-                  const newStart = aEnd ? nextDay(aEnd) : '?';
-                  const newDays = aEnd && ov.b.end_date
+                  const newStart = aEnd ? (nextDay(aEnd) || '?') : '?';
+                  const newDays = newStart !== '?' && ov.b.end_date
                     ? (newStart <= ov.b.end_date ? calcDays(newStart, ov.b.end_date) : 0)
                     : 0;
 

@@ -18,6 +18,7 @@ const navItems = [
   { path: '/BudgetProjection', label: 'Proyección 2027', icon: TrendingUp },
   { path: '/ImportModule', label: 'Importación', icon: UploadCloud },
   { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
+  { path: '/DataAudit', label: 'Auditoría de Datos', icon: ClipboardList },
 ];
 
 export default function Layout() {

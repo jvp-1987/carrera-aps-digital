@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   Users, LayoutDashboard, GraduationCap, FileText, 
-  Bell, Shield, ChevronLeft, ChevronRight, LogOut, TrendingUp, UploadCloud, Umbrella, ClipboardList, AlertTriangle
+  Bell, Shield, ChevronLeft, ChevronRight, LogOut, TrendingUp, UploadCloud, Umbrella, ClipboardList, AlertTriangle, RotateCcw
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';

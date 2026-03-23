@@ -509,8 +509,6 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
 }
 
 // ── Componente principal ─────────────────────────────────────────
-import { useImport } from '@/lib/ImportContext';
-
 export default function ImportModule() {
   const fileInputRef = useRef(null);
   const { state, validCount, setEmployees: setCtxEmployees, startImport, resumeImport, cancelImport, resetImport } = useImport();

@@ -742,15 +742,6 @@ export default function ImportModule() {
                 <Button onClick={handleConfirm} disabled={localValidCount === 0} className="bg-emerald-600 hover:bg-emerald-700">
                   <ClipboardCheck className="w-4 h-4 mr-1" /> Importar en segundo plano
                 </Button>
-                <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={skipExisting}
-                    onChange={e => setSkipExisting(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded"
-                  />
-                  Omitir funcionarios ya existentes
-                </label>
                 {localErrorCount > 0 && (
                   <p className="text-xs text-slate-500">{localErrorCount} registro(s) con errores serán omitidos.</p>
                 )}

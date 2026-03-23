@@ -20,6 +20,7 @@ const navItems = [
   { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
   { path: '/DataAudit', label: 'Auditoría de Datos', icon: ClipboardList },
   { path: '/AuditSolapamientos', label: 'Solapamientos', icon: AlertTriangle },
+  { path: '/ReimportarPeriodos', label: 'Reimportar Períodos', icon: RotateCcw },
 ];
 
 export default function Layout() {

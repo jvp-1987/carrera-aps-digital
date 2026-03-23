@@ -535,7 +535,6 @@ export default function ImportModule() {
 
   // Local employees state for editing before import starts
   const [localEmployees, setLocalEmployees] = useState(ctxEmployees.length > 0 ? ctxEmployees : []);
-  const [skipExisting, setSkipExisting] = useState(true);
   const [localStep, setLocalStep] = useState(
     status === 'done' ? 'done' : ctxEmployees.length > 0 ? 'preview' : 'idle'
   );

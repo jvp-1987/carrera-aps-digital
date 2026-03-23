@@ -303,7 +303,24 @@ export default function ImportCapacitacion() {
           calculated_points: parseFloat((c.puntaje || '0').toString().replace(',', '.')) || 0,
           status: 'Validado',
         }));
-        await base44.entities.Training.bulkCreate(toCreate);
+
+        // Intentar con reintentos ante rate limit
+        let attempts = 0;
+        while (attempts < 5) {
+          try {
+            await base44.entities.Training.bulkCreate(toCreate);
+            break;
+          } catch (err) {
+            const isRateLimit = err?.response?.status === 429 || (err?.message || '').toLowerCase().includes('rate limit');
+            if (isRateLimit && attempts < 4) {
+              attempts++;
+              await new Promise(r => setTimeout(r, 3000 * attempts));
+            } else {
+              throw err;
+            }
+          }
+        }
+
         ok.push({ name: item.sheetName, count: toCreate.length });
         setProgress(p => ({ ...p, ok: [...p.ok, { name: item.sheetName, count: toCreate.length }] }));
       } catch (err) {

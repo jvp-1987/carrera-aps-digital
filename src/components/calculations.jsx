@@ -45,9 +45,20 @@ export function calculateBienios(effectiveDays) {
   return Math.floor(effectiveDays / 730);
 }
 
+// Calcula días reales de un periodo a partir de sus fechas
+function getDaysFromPeriod(p) {
+  if (p.start_date) {
+    const start = new Date(p.start_date);
+    const end = p.end_date ? new Date(p.end_date) : new Date();
+    const days = Math.floor((end - start) / 86400000) + 1;
+    if (days > 0) return days;
+  }
+  return p.days_count || 0;
+}
+
 // Sum all service period days, then subtract leave days
 export function calculateEffectiveDays(servicePeriods, leaveDays) {
-  const totalWorked = servicePeriods.reduce((s, p) => s + (p.days_count || 0), 0);
+  const totalWorked = servicePeriods.reduce((s, p) => s + getDaysFromPeriod(p), 0);
   return Math.max(0, totalWorked - (leaveDays || 0));
 }
 

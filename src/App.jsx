@@ -58,6 +58,7 @@ const AuthenticatedApp = () => {
         <Route path="/ImportCapacitacion" element={<ImportCapacitacion />} />
         <Route path="/GestionEspecial" element={<GestionEspecial />} />
         <Route path="/DataAudit" element={<DataAudit />} />
+        <Route path="/AuditSolapamientos" element={<AuditSolapamientos />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

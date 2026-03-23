@@ -462,6 +462,9 @@ export default function ImportarExperiencia() {
         </CardContent>
       </Card>
 
+      {/* Recálculo de días */}
+      <RecalcularDias />
+
       {/* Sin candidatos */}
       {excelMap && candidates.length === 0 && (
         <Card className="border-amber-200 bg-amber-50">

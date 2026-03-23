@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, CheckCircle2, AlertTriangle, RotateCcw, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle2, AlertTriangle, RotateCcw, Loader2, FileSpreadsheet, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -69,11 +70,9 @@ function extractRUTAndPeriods(sheet) {
     const c4 = cellStr(sheet, 4, r);
     const rt = rowText(r);
 
-    // Detectar sección experiencia
     if (!inExperiencia && /experiencia|periodos\s*de\s*servicio|servicio\s*anterior|historia\s*laboral/i.test(c0n)) {
       inExperiencia = true; expHeaders = null; continue;
     }
-    // Detener en capacitación
     if (inExperiencia && /^capacitaci|^entrenamiento|^formaci/i.test(c0n)) break;
 
     if (inExperiencia) {
@@ -127,19 +126,105 @@ function extractRUTAndPeriods(sheet) {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+const validTypes = ['Planta', 'Plazo Fijo', 'Honorarios', 'Reemplazo'];
+
+async function importarPeriodosParaEmpleado(emp, periodos) {
+  // Eliminar períodos actuales
+  let oldPeriods = [];
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      oldPeriods = await base44.entities.ServicePeriod.filter({ employee_id: emp.id });
+      break;
+    } catch (err) {
+      if ((err?.response?.status === 429 || (err?.message || '').includes('rate')) && attempt < 4) {
+        await sleep(3000 * (attempt + 1));
+      } else throw err;
+    }
+  }
+  for (const p of oldPeriods) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await base44.entities.ServicePeriod.delete(p.id);
+        break;
+      } catch (err) {
+        if ((err?.response?.status === 429 || (err?.message || '').includes('rate')) && attempt < 4) {
+          await sleep(2000 * (attempt + 1));
+        } else throw err;
+      }
+    }
+  }
+
+  // Crear nuevos
+  const nuevos = periodos
+    .filter(p => p.tipo_periodo && p.fecha_inicio)
+    .map(p => ({
+      employee_id: emp.id,
+      period_type: validTypes.find(t => t.toLowerCase() === p.tipo_periodo.toLowerCase()) || 'Planta',
+      start_date: p.fecha_inicio,
+      end_date: p.fecha_fin || '',
+      institution: p.institucion || '',
+      days_count: p.dias ? parseInt(p.dias) || null : null,
+      is_active: !p.fecha_fin,
+      conflict_status: 'Sin Conflicto',
+    }));
+
+  if (nuevos.length > 0) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await base44.entities.ServicePeriod.bulkCreate(nuevos);
+        break;
+      } catch (err) {
+        if ((err?.response?.status === 429 || (err?.message || '').includes('rate')) && attempt < 4) {
+          await sleep(3000 * (attempt + 1));
+        } else throw err;
+      }
+    }
+  }
+  return nuevos.length;
+}
+
+// ── Componente principal ─────────────────────────────────────────
 export default function ReimportarPeriodos() {
   const fileInputRef = useRef(null);
-  const [step, setStep] = useState('idle');
-  const [progress, setProgress] = useState({ current: 0, total: 0, ok: [], failed: [], skipped: [] });
-  const [sheets, setSheets] = useState([]);
+  const queryClient = useQueryClient();
+  const [excelSheets, setExcelSheets] = useState(null); // mapa rut -> periodos
+  const [loadingItem, setLoadingItem] = useState(null);
+  const [doneItems, setDoneItems] = useState({});
+  const [importingAll, setImportingAll] = useState(false);
 
-  const { data: dbEmployees = [] } = useQuery({
+  const { data: dbEmployees = [], isLoading: empLoading } = useQuery({
     queryKey: ['employees-reimport'],
     queryFn: () => base44.entities.Employee.list('-created_date', 2000),
   });
 
+  const { data: allPeriods = [], isLoading: spLoading } = useQuery({
+    queryKey: ['periods-reimport'],
+    queryFn: () => base44.entities.ServicePeriod.list(null, 5000),
+    enabled: dbEmployees.length > 0,
+  });
+
+  const isLoading = empLoading || spLoading;
+
+  // Empleados sin períodos
+  const periodsByEmp = {};
+  allPeriods.forEach(p => {
+    if (!periodsByEmp[p.employee_id]) periodsByEmp[p.employee_id] = 0;
+    periodsByEmp[p.employee_id]++;
+  });
+
+  const sinPeriodos = dbEmployees.filter(e => !periodsByEmp[e.id] || periodsByEmp[e.id] === 0);
+
   const rutMap = {};
   dbEmployees.forEach(e => { rutMap[normalizeRUT(e.rut)] = e; });
+
+  // De los sin períodos, cuáles tienen datos en el Excel cargado
+  const candidates = excelSheets
+    ? sinPeriodos.map(emp => {
+        const rut = normalizeRUT(emp.rut);
+        const sheet = excelSheets[rut];
+        return sheet ? { emp, periodos: sheet.periodos, sheetName: sheet.sheetName } : null;
+      }).filter(Boolean)
+    : [];
 
   const handleFile = (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -147,231 +232,207 @@ export default function ReimportarPeriodos() {
     reader.onload = (ev) => {
       const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: false });
       const names = wb.SheetNames.filter(n => n !== 'Sheet' && n.trim() !== '');
-      const parsed = names.map(name => {
+      const map = {};
+      names.forEach(name => {
         const data = extractRUTAndPeriods(wb.Sheets[name]);
-        return { sheetName: name, rut: data?.rut || '', periodos: data?.periodos || [] };
+        if (data?.rut) map[data.rut] = { periodos: data.periodos, sheetName: name };
       });
-      // Solo mostrar hojas donde se encontró el RUT en la BD
-      const filtered = parsed.filter(s => s.rut && rutMap[s.rut]);
-      setSheets(filtered);
-      setStep('preview');
+      setExcelSheets(map);
+      setDoneItems({});
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const handleImport = async () => {
-    const valid = sheets.filter(s => s.rut && rutMap[s.rut] && s.periodos.length > 0);
-    const skippedSheets = sheets.filter(s => !s.rut || !rutMap[s.rut]);
-
-    setStep('importing');
-    setProgress({ current: 0, total: valid.length, ok: [], failed: [], skipped: skippedSheets.map(s => s.sheetName) });
-
-    const validTypes = ['Planta', 'Plazo Fijo', 'Honorarios', 'Reemplazo'];
-    const ok = [], failed = [];
-
-    for (let i = 0; i < valid.length; i++) {
-      const item = valid[i];
-      setProgress(p => ({ ...p, current: i + 1 }));
-      const emp = rutMap[item.rut];
-
-      try {
-        // Eliminar períodos actuales
-        let oldPeriods = [];
-        for (let attempt = 0; attempt < 5; attempt++) {
-          try {
-            oldPeriods = await base44.entities.ServicePeriod.filter({ employee_id: emp.id });
-            break;
-          } catch (err) {
-            if ((err?.response?.status === 429 || (err?.message || '').includes('rate')) && attempt < 4) {
-              await sleep(3000 * (attempt + 1));
-            } else throw err;
-          }
-        }
-        for (const p of oldPeriods) {
-          for (let attempt = 0; attempt < 5; attempt++) {
-            try {
-              await base44.entities.ServicePeriod.delete(p.id);
-              break;
-            } catch (err) {
-              if ((err?.response?.status === 429 || (err?.message || '').includes('rate')) && attempt < 4) {
-                await sleep(2000 * (attempt + 1));
-              } else throw err;
-            }
-          }
-        }
-
-        // Crear nuevos períodos
-        const nuevos = item.periodos
-          .filter(p => p.tipo_periodo && p.fecha_inicio)
-          .map(p => ({
-            employee_id: emp.id,
-            period_type: validTypes.find(t => t.toLowerCase() === p.tipo_periodo.toLowerCase()) || 'Planta',
-            start_date: p.fecha_inicio,
-            end_date: p.fecha_fin || '',
-            institution: p.institucion || '',
-            days_count: p.dias ? parseInt(p.dias) || null : null,
-            is_active: !p.fecha_fin,
-            conflict_status: 'Sin Conflicto',
-          }));
-
-        if (nuevos.length > 0) {
-          for (let attempt = 0; attempt < 5; attempt++) {
-            try {
-              await base44.entities.ServicePeriod.bulkCreate(nuevos);
-              break;
-            } catch (err) {
-              if ((err?.response?.status === 429 || (err?.message || '').includes('rate')) && attempt < 4) {
-                await sleep(3000 * (attempt + 1));
-              } else throw err;
-            }
-          }
-        }
-
-        ok.push({ name: item.sheetName, count: nuevos.length });
-        setProgress(p => ({ ...p, ok: [...p.ok, { name: item.sheetName, count: nuevos.length }] }));
-      } catch (err) {
-        failed.push({ name: item.sheetName, error: err?.message || 'Error desconocido' });
-        setProgress(p => ({ ...p, failed: [...p.failed, { name: item.sheetName, error: err?.message }] }));
-      }
-
-      if (i < valid.length - 1) await sleep(400);
+  const handleImportOne = async (item) => {
+    setLoadingItem(item.emp.id);
+    try {
+      const count = await importarPeriodosParaEmpleado(item.emp, item.periodos);
+      setDoneItems(d => ({ ...d, [item.emp.id]: count }));
+      toast.success(`${item.emp.full_name}: ${count} período(s) importados`);
+      queryClient.invalidateQueries({ queryKey: ['periods-reimport'] });
+    } catch (err) {
+      toast.error(`Error en ${item.emp.full_name}: ${err.message}`);
     }
-
-    setStep('done');
-    toast.success(`Reimportación completada: ${ok.length} funcionario(s) actualizados`);
+    setLoadingItem(null);
   };
 
-  const handleReset = () => {
-    setSheets([]);
-    setStep('idle');
-    setProgress({ current: 0, total: 0, ok: [], failed: [], skipped: [] });
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleImportAll = async () => {
+    const pending = candidates.filter(c => doneItems[c.emp.id] === undefined);
+    if (pending.length === 0) return;
+    setImportingAll(true);
+    for (let i = 0; i < pending.length; i++) {
+      const item = pending[i];
+      setLoadingItem(item.emp.id);
+      try {
+        const count = await importarPeriodosParaEmpleado(item.emp, item.periodos);
+        setDoneItems(d => ({ ...d, [item.emp.id]: count }));
+        queryClient.invalidateQueries({ queryKey: ['periods-reimport'] });
+      } catch (err) {
+        toast.error(`Error en ${item.emp.full_name}: ${err.message}`);
+      }
+      if (i < pending.length - 1) await sleep(400);
+    }
+    setLoadingItem(null);
+    setImportingAll(false);
+    toast.success('Importación masiva completada');
   };
 
-  const matched = sheets.filter(s => s.rut && rutMap[s.rut] && s.periodos.length > 0);
-  const unmatched = sheets.filter(s => !s.rut || !rutMap[s.rut]);
-  const noPeriodos = sheets.filter(s => s.rut && rutMap[s.rut] && s.periodos.length === 0);
+  const pendingCount = candidates.filter(c => doneItems[c.emp.id] === undefined).length;
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex justify-center items-center min-h-[300px]">
+        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Reimportar Períodos de Servicio</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Reemplaza los períodos de servicio actuales con los datos del Excel original. <strong>Solo toca períodos, no empleados ni capacitaciones.</strong>
+          Detecta funcionarios sin períodos y permite restaurarlos desde el Excel original.
         </p>
       </div>
 
-      {/* Importando */}
-      {step === 'importing' && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Reimportando... {progress.current} de {progress.total}
-            </div>
-            <div className="w-full bg-blue-200 rounded-full h-2">
-              <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${progress.total ? (progress.current / progress.total) * 100 : 0}%` }} />
-            </div>
-            <div className="flex gap-3 text-xs text-blue-700">
-              <span>✓ {progress.ok.length} procesados</span>
-              {progress.failed.length > 0 && <span className="text-red-600">✗ {progress.failed.length} errores</span>}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Resultado */}
-      {step === 'done' && (
-        <Card className="border-emerald-200 bg-emerald-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
-              <CheckCircle2 className="w-4 h-4" /> Reimportación completada
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Actualizados', value: progress.ok.length, color: 'green' },
-                { label: 'Sin períodos', value: progress.skipped.length, color: 'amber' },
-                { label: 'Errores', value: progress.failed.length, color: 'red' },
-              ].map(s => (
-                <div key={s.label} className="bg-white rounded-lg p-3 text-center border">
-                  <div className={`text-2xl font-bold text-${s.color}-600`}>{s.value}</div>
-                  <div className="text-xs text-slate-500 mt-1">{s.label}</div>
-                </div>
-              ))}
-            </div>
-            {progress.failed.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded p-3 space-y-1">
-                <p className="text-xs font-semibold text-red-700">Errores:</p>
-                {progress.failed.map((f, i) => (
-                  <p key={i} className="text-xs text-red-600">• {f.name}: {f.error}</p>
-                ))}
-              </div>
-            )}
-            <Button variant="outline" size="sm" onClick={handleReset}>
-              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Listo
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Idle */}
-      {step === 'idle' && (
+      {/* Resumen */}
+      <div className="grid grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-6 space-y-3">
-            <p className="text-sm text-slate-600">Sube el mismo archivo Excel de Carrera Funcionaria para restaurar los períodos eliminados.</p>
-            <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="w-4 h-4 mr-1" /> Seleccionar archivo Excel
-            </Button>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-slate-900">{dbEmployees.length}</p>
+            <p className="text-xs text-slate-500 mt-1">Total funcionarios</p>
+          </CardContent>
+        </Card>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-red-700">{sinPeriodos.length}</p>
+            <p className="text-xs text-red-600 mt-1">Sin períodos en BD</p>
+          </CardContent>
+        </Card>
+        <Card className={candidates.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-200'}>
+          <CardContent className="p-4 text-center">
+            <p className={`text-2xl font-bold ${candidates.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+              {excelSheets ? candidates.length : '—'}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Encontrados en Excel</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Cargar Excel */}
+      <Card>
+        <CardContent className="p-4 flex items-center gap-4">
+          <FileSpreadsheet className="w-8 h-8 text-indigo-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-slate-700">
+              {excelSheets
+                ? `Excel cargado · ${Object.keys(excelSheets).length} hojas encontradas`
+                : 'Sube el Excel de Carrera Funcionaria para cruzar los datos'}
+            </p>
+            {excelSheets && <p className="text-xs text-slate-400 mt-0.5">{candidates.length} funcionario(s) sin períodos identificados en el archivo</p>}
+          </div>
+          <Button
+            variant={excelSheets ? 'outline' : 'default'}
+            className={!excelSheets ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="w-4 h-4 mr-1" />
+            {excelSheets ? 'Cambiar archivo' : 'Seleccionar Excel'}
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
+        </CardContent>
+      </Card>
+
+      {/* Lista de candidatos */}
+      {excelSheets && candidates.length === 0 && (
+        <Card className="border-emerald-200 bg-emerald-50">
+          <CardContent className="p-4 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <p className="text-sm text-emerald-700 font-semibold">
+              No se encontraron funcionarios sin períodos en el Excel cargado.
+            </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Preview */}
-      {step === 'preview' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-green-700">{matched.length}</div>
-              <div className="text-xs text-slate-500">Funcionarios a reimportar</div>
-            </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-amber-700">{unmatched.length}</div>
-              <div className="text-xs text-slate-500">No encontrados en BD</div>
-            </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-slate-700">{noPeriodos.length}</div>
-              <div className="text-xs text-slate-500">Sin períodos en Excel</div>
-            </div>
+      {candidates.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-700">
+              {candidates.length} funcionario(s) a restaurar
+            </p>
+            {pendingCount > 0 && (
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                disabled={importingAll}
+                onClick={handleImportAll}
+              >
+                {importingAll
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Importando...</>
+                  : <><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Importar todos ({pendingCount})</>
+                }
+              </Button>
+            )}
           </div>
 
-          {unmatched.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-xs font-semibold text-amber-700 mb-1">Hojas sin funcionario en BD ({unmatched.length}):</p>
-              <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
-                {unmatched.map(s => (
-                  <span key={s.sheetName} className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
-                    {s.sheetName} {s.rut ? `(${s.rut})` : '(sin RUT)'}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="space-y-2">
+            {candidates.map(item => {
+              const isDone = doneItems[item.emp.id] !== undefined;
+              const isThis = loadingItem === item.emp.id;
+              return (
+                <Card key={item.emp.id} className={isDone ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200'}>
+                  <CardContent className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <User className="w-4 h-4 text-slate-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{item.emp.full_name}</p>
+                        <p className="text-xs text-slate-400">{item.emp.rut} · {item.periodos.length} período(s) en Excel</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isDone ? (
+                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> {doneItems[item.emp.id]} períodos
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="bg-indigo-600 hover:bg-indigo-700 h-7 text-xs"
+                          disabled={isThis || importingAll}
+                          onClick={() => handleImportOne(item)}
+                        >
+                          {isThis
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : 'Restaurar'
+                          }
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-          <div className="flex items-center gap-3 pt-2 border-t">
-            <Button
-              onClick={handleImport}
-              disabled={matched.length === 0}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              <CheckCircle2 className="w-4 h-4 mr-1" />
-              Reimportar {matched.length} funcionario(s)
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleReset}>
-              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Cancelar
-            </Button>
+      {/* Sin períodos pero no en Excel */}
+      {excelSheets && sinPeriodos.length > candidates.length && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p className="text-xs font-semibold text-amber-700 mb-1 flex items-center gap-1">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Sin períodos y no encontrados en el Excel ({sinPeriodos.length - candidates.length}):
+          </p>
+          <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+            {sinPeriodos
+              .filter(e => !candidates.find(c => c.emp.id === e.id))
+              .map(e => (
+                <span key={e.id} className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                  {e.full_name} ({e.rut})
+                </span>
+              ))}
           </div>
         </div>
       )}

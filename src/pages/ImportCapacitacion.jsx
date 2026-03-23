@@ -311,7 +311,7 @@ export default function ImportCapacitacion() {
         setProgress(p => ({ ...p, failed: [...p.failed, { name: item.sheetName, error: err?.message }] }));
       }
 
-      if (i < valid.length - 1) await new Promise(r => setTimeout(r, 300));
+      if (i < valid.length - 1) await new Promise(r => setTimeout(r, 600));
     }
 
     setStep('done');

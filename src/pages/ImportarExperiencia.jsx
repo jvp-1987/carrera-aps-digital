@@ -282,7 +282,7 @@ function RecalcularDias() {
           {toFix.length > 0 ? (
             <div className="flex gap-2">
               <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={handleRun}>
-                <Calculator className="w-3.5 h-3.5 mr-1" /> Corregir {toFix.length} períodos
+                <RefreshCw className="w-3.5 h-3.5 mr-1" /> Corregir {toFix.length} períodos
               </Button>
               <Button size="sm" variant="ghost" onClick={handleReset}>Cancelar</Button>
             </div>

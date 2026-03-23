@@ -17,7 +17,6 @@ import Resolutions from '@/pages/Resolutions';
 import Alerts from '@/pages/Alerts';
 import BudgetProjection from '@/pages/BudgetProjection';
 import ImportModule from '@/pages/ImportModule';
-import ImportCapacitacion from '@/pages/ImportCapacitacion';
 import GestionEspecial from '@/pages/GestionEspecial';
 import DataAudit from '@/pages/DataAudit';
 import AuditSolapamientos from '@/pages/AuditSolapamientos';

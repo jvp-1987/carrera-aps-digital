@@ -17,7 +17,6 @@ const navItems = [
   { path: '/Alerts', label: 'Alertas', icon: Bell },
   { path: '/BudgetProjection', label: 'Proyección 2027', icon: TrendingUp },
   { path: '/ImportModule', label: 'Importación', icon: UploadCloud },
-  { path: '/ImportCapacitacion', label: 'Import. Capacitación', icon: GraduationCap },
   { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
   { path: '/DataAudit', label: 'Auditoría de Datos', icon: ClipboardList },
 ];

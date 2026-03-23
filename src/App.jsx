@@ -20,6 +20,7 @@ import ImportModule from '@/pages/ImportModule';
 import ImportCapacitacion from '@/pages/ImportCapacitacion';
 import GestionEspecial from '@/pages/GestionEspecial';
 import DataAudit from '@/pages/DataAudit';
+import AuditSolapamientos from '@/pages/AuditSolapamientos';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

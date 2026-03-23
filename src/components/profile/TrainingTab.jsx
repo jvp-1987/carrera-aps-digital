@@ -110,8 +110,8 @@ export default function TrainingTab({ employee }) {
   };
 
   const handleSubmit = () => {
-    if (!form.certificate_url) {
-      toast.error('Debe adjuntar el certificado PDF para habilitar el puntaje');
+    if (!form.course_name || !form.hours || !form.grade || !form.technical_level) {
+      toast.error('Completa los campos obligatorios: nombre, horas, nota y nivel técnico');
       return;
     }
     const pts = calculateTrainingPoints(parseFloat(form.hours), parseFloat(form.grade), form.technical_level);

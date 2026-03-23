@@ -209,6 +209,18 @@ function parseCarreraSheet(sheet, sheetName) {
         const cursoRaw = findCol('institucion', 'curso', 'nombre', 'actividad');
         if (!cursoRaw) continue;
 
+        // Ignorar filas que son parte del encabezado de carrera (bienios, categoría, totales)
+        const cursoNorm = norm(cursoRaw);
+        if (
+          cursoNorm.includes('bienio') ||
+          cursoNorm.includes('total') ||
+          cursoNorm.includes('puntaje') ||
+          /^cat\.\s*[a-f]/i.test(cursoRaw) ||
+          cursoNorm.includes('nivel') && cursoNorm.includes('pts') ||
+          cursoNorm === 'capacitacion' ||
+          cursoNorm === 'capacitación'
+        ) continue;
+
         // Separar institución y nombre del curso si hay " – " o " - "
         const partes = cursoRaw.split(/\s+[–-]\s+/);
         const institucion = partes.length > 1 ? partes[0].trim() : '';

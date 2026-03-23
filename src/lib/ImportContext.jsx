@@ -93,7 +93,7 @@ export function ImportProvider({ children }) {
     setState(s => ({ ...s, employees: emps, status: 'idle', ok: [], failed: [], currentIndex: 0, errorInfo: null }));
   }, []);
 
-  const startImport = useCallback(async (employees, rutMap, startFrom = 0) => {
+  const startImport = useCallback(async (employees, rutMap, startFrom = 0, skipExisting = false) => {
     const valid = employees.filter(e => e.errors.length === 0);
     if (!valid.length) { toast.error('No hay funcionarios válidos'); return; }
 
@@ -102,11 +102,19 @@ export function ImportProvider({ children }) {
 
     const ok = [];
     const failed = [];
+    let skippedCount = employees.length - valid.length;
 
     for (let i = startFrom; i < valid.length; i++) {
       if (abortRef.current) break;
       setState(s => ({ ...s, currentIndex: i }));
       const emp = valid[i];
+
+      // Saltar si ya existe en la BD y el usuario eligió omitir existentes
+      if (skipExisting && rutMap[emp.data.rut]) {
+        skippedCount++;
+        continue;
+      }
+
       try {
         await importEmployee(emp.data, rutMap);
         ok.push(emp.sheetName);
@@ -125,7 +133,7 @@ export function ImportProvider({ children }) {
 
     setState(s => ({
       ...s, status: 'done', ok, failed,
-      skipped: employees.length - valid.length,
+      skipped: skippedCount,
     }));
     toast.success(`${ok.length} funcionario(s) importado(s) correctamente`);
   }, []);

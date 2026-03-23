@@ -508,14 +508,18 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
 }
 
 // ── Componente principal ─────────────────────────────────────────
+import { useImport } from '@/lib/ImportContext';
+
 export default function ImportModule() {
   const fileInputRef = useRef(null);
-  const [employees, setEmployees] = useState([]);
-  const [step, setStep] = useState('idle');
-  const [importing, setImporting] = useState(false);
-  const [importLog, setImportLog] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [importError, setImportError] = useState(null);
+  const { state, validCount, setEmployees: setCtxEmployees, startImport, resumeImport, cancelImport, resetImport } = useImport();
+  const { status, employees: ctxEmployees, currentIndex, ok, failed, skipped, errorInfo } = state;
+
+  // Local employees state for editing before import starts
+  const [localEmployees, setLocalEmployees] = useState(ctxEmployees.length > 0 ? ctxEmployees : []);
+  const [localStep, setLocalStep] = useState(
+    status === 'done' ? 'done' : ctxEmployees.length > 0 ? 'preview' : 'idle'
+  );
 
   const { data: dbEmployees = [] } = useQuery({
     queryKey: ['employees-all'],
@@ -525,12 +529,15 @@ export default function ImportModule() {
   const rutMap = {};
   dbEmployees.forEach(e => { rutMap[normalizeRUT(e.rut)] = e; });
 
+  // Sync local employees with context when context has running import
+  const displayEmployees = (status === 'running' || status === 'error') ? ctxEmployees : localEmployees;
+  const displayStep = status === 'done' ? 'done' : status === 'running' || status === 'error' ? 'importing' : localStep;
+
   const handleFile = (e) => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: false });
-      // Saltar la primera hoja "Sheet" que es una plantilla vacía
       const sheetNames = wb.SheetNames.filter(n => n !== 'Sheet' && n.trim() !== '');
       const parsed = sheetNames.map(name => {
         const sheet = wb.Sheets[name];
@@ -539,17 +546,14 @@ export default function ImportModule() {
         const errors = validateEmployee(data);
         return { sheetName: name, data, errors };
       });
-      setEmployees(parsed);
-      // Guardar en localStorage para no tener que re-parsear
-      sessionStorage.setItem('importedData', JSON.stringify(parsed));
-      setStep('preview');
-      setImportLog(null);
+      setLocalEmployees(parsed);
+      setLocalStep('preview');
     };
     reader.readAsArrayBuffer(file);
   };
 
   const handleEdit = (sheetName, field, value) => {
-    setEmployees(prev => prev.map(emp => {
+    setLocalEmployees(prev => prev.map(emp => {
       if (emp.sheetName !== sheetName) return emp;
       let finalValue = value;
       if (field === 'rut') finalValue = normalizeRUT(value);
@@ -563,80 +567,24 @@ export default function ImportModule() {
     }));
   };
 
-  const handleConfirm = async () => {
-    const valid = employees.filter(e => e.errors.length === 0);
-    if (!valid.length) { toast.error('No hay funcionarios válidos para importar'); return; }
-    
-    setImporting(true);
-    setImportError(null);
-    const log = { ok: [], failed: [] };
-    
-    for (let i = 0; i < valid.length; i++) {
-      setCurrentIndex(i);
-      const emp = valid[i];
-      try {
-        await importEmployee(emp.data, rutMap, () => setRateLimitRetries(r => r + 1));
-        log.ok.push(emp.sheetName);
-      } catch (err) {
-        const errorMsg = err?.message || 'Error desconocido';
-        log.failed.push({ name: emp.sheetName, error: errorMsg });
-        setImportError({ emp: emp.sheetName, error: errorMsg });
-        // Pausar en error para revisión
-        setImporting(false);
-        return;
-      }
-      if (i < valid.length - 1) await sleep(300);
-    }
-    
-    setImportLog({ ...log, total: employees.length, skipped: employees.length - valid.length });
-    setStep('done');
-    setImporting(false);
-    toast.success(`${log.ok.length} funcionario(s) importado(s)`);
+  const handleConfirm = () => {
+    setCtxEmployees(localEmployees);
+    startImport(localEmployees, rutMap, 0);
   };
 
-  const handleContinueAfterError = async () => {
-    const valid = employees.filter(e => e.errors.length === 0);
-    const startIndex = currentIndex + 1;
-    if (startIndex >= valid.length) {
-      setImportError(null);
-      return;
-    }
-
-    setImporting(true);
-    setImportError(null);
-    const log = { ok: [], failed: [] };
-
-    for (let i = startIndex; i < valid.length; i++) {
-      setCurrentIndex(i);
-      const emp = valid[i];
-      try {
-        await importEmployee(emp.data, rutMap, () => setRateLimitRetries(r => r + 1));
-        log.ok.push(emp.sheetName);
-      } catch (err) {
-        const errorMsg = err?.message || 'Error desconocido';
-        log.failed.push({ name: emp.sheetName, error: errorMsg });
-        setImportError({ emp: emp.sheetName, error: errorMsg });
-        setImporting(false);
-        return;
-      }
-      if (i < valid.length - 1) await sleep(300);
-    }
-
-    setImportLog({ ...log, total: employees.length, skipped: employees.length - valid.length });
-    setStep('done');
-    setImporting(false);
-    toast.success(`${log.ok.length} funcionario(s) importado(s) en total`);
-  };
-
-  const reset = () => {
-    setEmployees([]); setStep('idle'); setImportLog(null);
-    sessionStorage.removeItem('importedData');
+  const handleReset = () => {
+    resetImport();
+    setLocalEmployees([]);
+    setLocalStep('idle');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const validCount = employees.filter(e => e.errors.length === 0).length;
-  const errorCount = employees.length - validCount;
-  const [rateLimitRetries, setRateLimitRetries] = useState(0);
+  const localValidCount = localEmployees.filter(e => e.errors.length === 0).length;
+  const localErrorCount = localEmployees.length - localValidCount;
+
+  const isRunning = status === 'running';
+  const isError = status === 'error';
+  const isDone = status === 'done';
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -647,108 +595,45 @@ export default function ImportModule() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4 text-indigo-600" /> Formato esperado
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-xs text-slate-600 space-y-3">
-          <p>Archivo Excel con <strong>una pestaña por funcionario</strong>. Cada hoja debe tener:</p>
-          <div className="bg-slate-50 rounded-md p-3 space-y-1.5 font-mono text-[11px]">
-            <div><span className="text-slate-400">Fila 1 →</span> <span className="text-slate-800 font-semibold">Nombre completo del funcionario</span></div>
-            <div><span className="text-slate-400">Fila 2 →</span> <span className="text-indigo-700">Cat. B · Nivel 8 · 5.306 pts · 7 bienios</span></div>
-            <div><span className="text-slate-400">Fila 3+ →</span> <span className="text-slate-600">Pares clave-valor: RUT, Cargo, Profesión, etc.</span></div>
-            <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-emerald-700 font-semibold">Experiencia</span> <span className="text-slate-400">(celda A con esa palabra exacta)</span></div>
-            <div className="pl-10 text-slate-500">Headers: Establecimiento | Fecha Inicio | Término | Días</div>
-            <div className="pl-10 text-slate-500">El tipo va entre paréntesis: <em>CESFAM X (Reemplazo)</em></div>
-            <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-blue-700 font-semibold">Capacitacion</span> <span className="text-slate-400">(celda A con esa palabra exacta)</span></div>
-            <div className="pl-10 text-slate-500">Headers: Institución – Nombre curso | Horas | Nota | Nivel | Fecha</div>
-            <div className="pl-10 text-slate-500">Institución y curso separados por <em> – </em> en la misma celda</div>
-          </div>
-          <p className="text-slate-400">Tipos válidos: Planta · Plazo Fijo · Honorarios · Reemplazo &nbsp;|&nbsp; Niveles: Básico · Intermedio · Avanzado · Postgrado</p>
-          <div className="pt-2">
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="w-4 h-4 mr-1" /> Seleccionar archivo Excel
-            </Button>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {step === 'preview' && employees.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-slate-700">{employees.length} funcionarios detectados</span>
-              <Badge className="bg-green-100 text-green-800">{validCount} válidos</Badge>
-              {errorCount > 0 && <Badge className="bg-red-100 text-red-800">{errorCount} con errores</Badge>}
+      {/* Running import status card */}
+      {(isRunning || isError) && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
+              {isRunning && <div className="w-4 h-4 border-2 border-blue-400 border-t-blue-800 rounded-full animate-spin" />}
+              {isError && <AlertTriangle className="w-4 h-4 text-amber-600" />}
+              {isRunning ? `Importando en segundo plano... ${currentIndex + 1} de ${validCount}` : 'Importación pausada por error'}
             </div>
-          </div>
-
-          <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
-            {employees.map(emp => (
-              <EmployeeCard key={emp.sheetName} emp={emp} rutMap={rutMap} onEdit={handleEdit} />
-            ))}
-          </div>
-
-          <div className="space-y-3 pt-2 border-t">
-            {rateLimitRetries > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-xs text-amber-800">
-                  ⏳ {rateLimitRetries} reintentos por límite de velocidad. Continuando en 3 segundos...
-                </p>
+            {isRunning && (
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${((currentIndex + 1) / validCount) * 100}%` }} />
               </div>
             )}
-            {importing && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-xs text-blue-800 mb-2">
-                  Importando: <strong>{currentIndex + 1} de {validCount}</strong>
-                </p>
-                <div className="w-full bg-blue-200 rounded-full h-1.5">
-                  <div
-                    className="bg-blue-600 h-1.5 rounded-full transition-all"
-                    style={{ width: `${((currentIndex + 1) / validCount) * 100}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            {importError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                <p className="text-xs text-red-800">
-                  ❌ Error en <strong>"{importError.emp}"</strong>: {importError.error}
-                </p>
+            <div className="flex gap-3 text-xs text-blue-700">
+              <span>✓ {ok.length} importados</span>
+              {failed.length > 0 && <span className="text-red-600">✗ {failed.length} fallidos</span>}
+            </div>
+            {isError && errorInfo && (
+              <div className="bg-red-50 border border-red-200 rounded p-2 space-y-2">
+                <p className="text-xs text-red-800">❌ Error en <strong>"{errorInfo.emp}"</strong>: {errorInfo.error}</p>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleContinueAfterError} className="bg-amber-600 hover:bg-amber-700">
+                  <Button size="sm" onClick={() => resumeImport(ctxEmployees, rutMap, errorInfo.resumeFrom)} className="bg-amber-600 hover:bg-amber-700">
                     Continuar con el siguiente
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setImportError(null); reset(); }}>
-                    Cancelar importación
-                  </Button>
+                  <Button size="sm" variant="ghost" onClick={handleReset}>Cancelar</Button>
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                onClick={handleConfirm}
-                disabled={importing || importError || validCount === 0}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                <ClipboardCheck className="w-4 h-4 mr-1" />
-                {importing ? 'Importando...' : `Importar automáticamente`}
+            {isRunning && (
+              <Button size="sm" variant="ghost" onClick={cancelImport} className="text-red-500 hover:text-red-700">
+                Cancelar importación
               </Button>
-              {errorCount > 0 && (
-                <p className="text-xs text-slate-500">{errorCount} registro(s) con errores serán omitidos.</p>
-              )}
-              <Button variant="ghost" size="sm" onClick={reset} disabled={importing}>
-                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Cancelar
-              </Button>
-            </div>
-          </div>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      {step === 'done' && importLog && (
+      {isDone && (
         <Card className="border-emerald-200 bg-emerald-50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
@@ -758,10 +643,10 @@ export default function ImportModule() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-4 gap-3">
               {[
-                { label: 'Total', value: importLog.total, color: 'slate' },
-                { label: 'Importados', value: importLog.ok.length, color: 'green' },
-                { label: 'Omitidos', value: importLog.skipped, color: 'amber' },
-                { label: 'Errores guardado', value: importLog.failed.length, color: 'red' },
+                { label: 'Total', value: ctxEmployees.length, color: 'slate' },
+                { label: 'Importados', value: ok.length, color: 'green' },
+                { label: 'Omitidos', value: skipped, color: 'amber' },
+                { label: 'Errores', value: failed.length, color: 'red' },
               ].map(s => (
                 <div key={s.label} className="bg-white rounded-lg p-3 text-center border">
                   <div className={`text-2xl font-bold text-${s.color}-600`}>{s.value}</div>
@@ -769,31 +654,86 @@ export default function ImportModule() {
                 </div>
               ))}
             </div>
-
-            {importLog.ok.length > 0 && (
+            {ok.length > 0 && (
               <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                {importLog.ok.map(name => (
+                {ok.map(name => (
                   <Badge key={name} className="bg-green-100 text-green-800 text-[10px]">
                     <User className="w-2.5 h-2.5 mr-1" />{name}
                   </Badge>
                 ))}
               </div>
             )}
-
-            {importLog.failed.length > 0 && (
+            {failed.length > 0 && (
               <div className="bg-red-50 border border-red-200 rounded p-3 space-y-1">
                 <p className="text-xs font-semibold text-red-700">Errores al guardar:</p>
-                {importLog.failed.map((f, i) => (
+                {failed.map((f, i) => (
                   <p key={i} className="text-xs text-red-600">• {f.name}: {f.error}</p>
                 ))}
               </div>
             )}
-
-            <Button variant="outline" size="sm" onClick={reset}>
+            <Button variant="outline" size="sm" onClick={handleReset}>
               <RotateCcw className="w-3.5 h-3.5 mr-1" /> Nueva importación
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {!isRunning && !isError && !isDone && (
+        <>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-indigo-600" /> Formato esperado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs text-slate-600 space-y-3">
+              <p>Archivo Excel con <strong>una pestaña por funcionario</strong>. Cada hoja debe tener:</p>
+              <div className="bg-slate-50 rounded-md p-3 space-y-1.5 font-mono text-[11px]">
+                <div><span className="text-slate-400">Fila 1 →</span> <span className="text-slate-800 font-semibold">Nombre completo del funcionario</span></div>
+                <div><span className="text-slate-400">Fila 2 →</span> <span className="text-indigo-700">Cat. B · Nivel 8 · 5.306 pts · 7 bienios</span></div>
+                <div><span className="text-slate-400">Fila 3+ →</span> <span className="text-slate-600">Pares clave-valor: RUT, Cargo, Profesión, etc.</span></div>
+                <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-emerald-700 font-semibold">Experiencia</span></div>
+                <div className="pl-10 text-slate-500">Headers: Establecimiento | Fecha Inicio | Término | Días</div>
+                <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-blue-700 font-semibold">Capacitacion</span></div>
+                <div className="pl-10 text-slate-500">Headers: Institución – Nombre curso | Horas | Nota | Nivel | Fecha</div>
+              </div>
+              <div className="pt-2">
+                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-1" /> Seleccionar archivo Excel
+                </Button>
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {localStep === 'preview' && localEmployees.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-sm font-semibold text-slate-700">{localEmployees.length} funcionarios detectados</span>
+                <Badge className="bg-green-100 text-green-800">{localValidCount} válidos</Badge>
+                {localErrorCount > 0 && <Badge className="bg-red-100 text-red-800">{localErrorCount} con errores</Badge>}
+              </div>
+
+              <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
+                {localEmployees.map(emp => (
+                  <EmployeeCard key={emp.sheetName} emp={emp} rutMap={rutMap} onEdit={handleEdit} />
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                <Button onClick={handleConfirm} disabled={localValidCount === 0} className="bg-emerald-600 hover:bg-emerald-700">
+                  <ClipboardCheck className="w-4 h-4 mr-1" /> Importar en segundo plano
+                </Button>
+                {localErrorCount > 0 && (
+                  <p className="text-xs text-slate-500">{localErrorCount} registro(s) con errores serán omitidos.</p>
+                )}
+                <Button variant="ghost" size="sm" onClick={handleReset}>
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

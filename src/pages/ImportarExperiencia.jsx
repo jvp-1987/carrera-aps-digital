@@ -251,7 +251,7 @@ function RecalcularDias() {
   return (
     <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-white">
       <div className="flex items-center gap-2">
-        <Calculator className="w-4 h-4 text-indigo-500" />
+        <RefreshCw className="w-4 h-4 text-indigo-500" />
         <h2 className="text-sm font-bold text-slate-800">Recalcular días de períodos</h2>
       </div>
       <p className="text-xs text-slate-500">

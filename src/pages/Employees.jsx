@@ -142,13 +142,13 @@ function DuplicatesPanel({ employees, onDelete }) {
 export default function Employees() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('Activo');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'group'
 
   const exportToExcel = () => {
     const headers = ['RUT', 'Nombre', 'Categoría', 'Cargo', 'Unidad', 'Nivel Actual', 'Bienios', 'Pts. Bienio', 'Pts. Capacitación', 'Puntaje Total', 'Estado', 'Tipo Contrato', 'Fecha Ingreso'];
-    const rows = employees.map(e => [
+    const rows = filtered.map(e => [
       e.rut || '',
       e.full_name || '',
       e.category || '',

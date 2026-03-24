@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Plus, Users, Download, Table, Layers, AlertTriangle, ChevronDown, ChevronRight, Trash2, BarChart3, Briefcase, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 import EmployeeTableView from '@/components/employees/EmployeeTableView';
 import EmployeeGroupView from '@/components/employees/EmployeeGroupView';
 
@@ -211,14 +212,18 @@ export default function Employees() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      >
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Funcionarios</h1>
-          <p className="text-slate-500 text-sm mt-1">Gestión integral del personal</p>
+          <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-purple-600 tracking-tight pb-1">Funcionarios</h1>
+          <p className="text-slate-500 text-sm mt-1 font-medium">Gestión integral del personal clínico y administrativo</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <div className="flex border rounded-md overflow-hidden">
+        <div className="flex gap-3 flex-wrap items-center">
+          <div className="flex bg-white shadow-sm border border-slate-200 rounded-lg p-1">
             {[
               { mode: 'table', icon: Table, label: 'Tabla' },
               { mode: 'group', icon: Layers, label: 'Grupos' },
@@ -227,124 +232,149 @@ export default function Employees() {
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 title={label}
-                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${viewMode === mode ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                className={`px-4 py-2 flex items-center gap-2 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === mode ? 'bg-indigo-600 text-white shadow-md transform scale-105' : 'bg-transparent text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
               >
-                <Icon className="w-3.5 h-3.5" /> {label}
+                <Icon className="w-4 h-4" /> {label}
               </button>
             ))}
           </div>
-          <Button variant="outline" onClick={exportToExcel} className="flex items-center gap-2">
+          <Button variant="outline" onClick={exportToExcel} className="flex items-center gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 h-10 px-4 rounded-lg shadow-sm transition-all hover:shadow">
             <Download className="w-4 h-4" /> Exportar
           </Button>
           <Link to="/EmployeeForm">
-            <Button className="bg-indigo-600 hover:bg-indigo-700">
+            <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white h-10 px-5 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 border-none">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo
             </Button>
           </Link>
         </div>
-      </div>
+      </motion.div>
 
       {/* Cards de estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
+        <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white overflow-hidden relative group">
+          <div className="absolute -right-6 -top-6 opacity-10 transform group-hover:scale-110 transition-transform duration-500"><Users className="w-40 h-40" /></div>
+          <CardContent className="p-6 relative z-10">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Total</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{stats.total}</p>
-                <p className="text-xs text-slate-400 mt-2">{stats.active} activos</p>
-              </div>
-              <div className="bg-indigo-100 p-3 rounded-lg">
-                <Users className="w-5 h-5 text-indigo-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Categorías</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{stats.categories.length}</p>
-                <p className="text-xs text-slate-400 mt-2">profesionales</p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Briefcase className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Distribución</p>
-                <div className="flex gap-1 mt-2">
-                  {stats.categories.map(cat => (
-                    <div key={cat.cat} title={`${cat.label}: ${cat.count}`} className={`h-3 rounded-sm ${categoryColors[cat.cat]}`} style={{ width: `${(cat.count / stats.total) * 60}px` }} />
-                  ))}
+                <p className="text-indigo-100 uppercase tracking-widest text-[10px] font-bold mb-2">Total Funcionarios</p>
+                <p className="text-5xl font-black tracking-tighter drop-shadow-md">{stats.total}</p>
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm border border-white/10">{stats.active} activos</span>
                 </div>
-                <p className="text-xs text-slate-400 mt-2">por categoría</p>
               </div>
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <BarChart3 className="w-5 h-5 text-purple-600" />
+              <div className="bg-white/20 p-3.5 rounded-2xl backdrop-blur-md shadow-inner border border-white/20">
+                <Users className="w-7 h-7 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Card className="border-none shadow-xl bg-gradient-to-br from-teal-400 via-emerald-500 to-emerald-600 text-white overflow-hidden relative group">
+          <div className="absolute -right-6 -top-6 opacity-10 transform group-hover:scale-110 transition-transform duration-500"><Briefcase className="w-40 h-40" /></div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-emerald-50 uppercase tracking-widest text-[10px] font-bold mb-2">Categorías</p>
+                <p className="text-5xl font-black tracking-tighter drop-shadow-md">{stats.categories.length}</p>
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm border border-white/10">Grupos Profesionales</span>
+                </div>
+              </div>
+              <div className="bg-white/20 p-3.5 rounded-2xl backdrop-blur-md shadow-inner border border-white/20">
+                <Briefcase className="w-7 h-7 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-xl bg-gradient-to-br from-orange-400 via-pink-500 to-rose-500 text-white overflow-hidden relative group">
+          <div className="absolute -right-6 -top-6 opacity-10 transform group-hover:scale-110 transition-transform duration-500"><BarChart3 className="w-40 h-40" /></div>
+          <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full">
+            <div className="flex items-start justify-between mb-4">
+              <p className="text-orange-50 uppercase tracking-widest text-[10px] font-bold">Distribución</p>
+              <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md shadow-inner border border-white/20 shrink-0">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+            </div>
+            
+            <div className="w-full">
+              <div className="flex gap-1 h-5 bg-black/10 rounded-full w-full backdrop-blur-sm p-1 shadow-inner overflow-hidden">
+                {stats.categories.map(cat => (
+                  <div 
+                    key={cat.cat} 
+                    title={`${cat.label}: ${cat.count}`} 
+                    className="h-full rounded-full bg-white/90 hover:bg-white transition-all cursor-pointer hover:shadow-glow" 
+                    style={{ width: `${(cat.count / stats.total) * 100}%` }} 
+                  />
+                ))}
+              </div>
+              <p className="text-pink-100 text-[10px] uppercase tracking-wider mt-3 font-semibold text-right">Por Categoría</p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="sticky top-4 z-30"
+      >
+        <div className="bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg rounded-2xl overflow-hidden p-4 sm:p-5 transition-all">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <div className="relative flex-1 w-full">
+              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input
                 placeholder="Buscar por nombre o RUT..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-10"
+                className="pl-11 h-11 bg-white/80 border-slate-200 focus:bg-white rounded-xl shadow-sm text-[15px] focus:ring-indigo-500 focus:border-indigo-500 transition-all"
               />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las Cat.</SelectItem>
-                {Object.entries(categoryLabels).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{k} — {v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="Activo">✓ Activo</SelectItem>
-                <SelectItem value="Inactivo">✗ Inactivo (No pertenece)</SelectItem>
-                <SelectItem value="Licencia">📋 Licencia</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-full sm:w-52">
-                <SelectValue placeholder="Establecimiento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los establecimientos</SelectItem>
-                {departments.map(d => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-3 w-full sm:w-auto">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full sm:w-44 h-11 bg-white/80 border-slate-200 focus:bg-white rounded-xl shadow-sm">
+                  <SelectValue placeholder="Categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las Cat.</SelectItem>
+                  {Object.entries(categoryLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{k} — {v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-48 h-11 bg-white/80 border-slate-200 focus:bg-white rounded-xl shadow-sm">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="Activo">✓ Activo</SelectItem>
+                  <SelectItem value="Inactivo">✗ Inactivo (No pertenece)</SelectItem>
+                  <SelectItem value="Licencia">📋 Licencia</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-full sm:w-56 h-11 bg-white/80 border-slate-200 focus:bg-white rounded-xl shadow-sm">
+                  <SelectValue placeholder="Establecimiento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los establ.</SelectItem>
+                  {departments.map(d => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </motion.div>
 
       <DuplicatesPanel employees={employees} onDelete={() => queryClient.invalidateQueries({ queryKey: ['employees'] })} />
 

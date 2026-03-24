@@ -1,404 +1,276 @@
-import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import { Link } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useEmployees } from '@/hooks/useEmployees';
+import { logger } from '@/lib/logger';
+import StatsCards from '@/components/employees/StatsCards';
+import ViewToggle from '@/components/employees/ViewToggle';
+import SearchFiltersBar from '@/components/employees/SearchFiltersBar';
+import DuplicatesPanel from '@/components/employees/DuplicatesPanel';
+import { categoryLabels, categoryColors, normalizeRUT } from '@/components/employees/categoryUtils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Plus, Users, Download, Table, Layers, AlertTriangle, ChevronDown, ChevronRight, Trash2, BarChart3, Briefcase, TrendingUp } from 'lucide-react';
-import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
-import EmployeeTableView from '@/components/employees/EmployeeTableView';
-import EmployeeGroupView from '@/components/employees/EmployeeGroupView';
-
-const categoryLabels = {
-  A: 'Médicos',
-  B: 'Profesionales',
-  C: 'Técnicos',
-  D: 'Técnicos Salud',
-  E: 'Administrativos',
-  F: 'Auxiliares',
-};
-
-const categoryColors = {
-  A: 'bg-violet-100 text-violet-700',
-  B: 'bg-blue-100 text-blue-700',
-  C: 'bg-teal-100 text-teal-700',
-  D: 'bg-cyan-100 text-cyan-700',
-  E: 'bg-orange-100 text-orange-700',
-  F: 'bg-slate-100 text-slate-700',
-};
-
-function normalizeRUT(rut) {
-  return (rut || '').toString().replace(/\./g, '').replace(/,/g, '').replace(/\s/g, '').trim().toUpperCase();
-}
-
-function DuplicatesPanel({ employees, onDelete }) {
-  const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState(null);
-
-  // Detectar duplicados por RUT normalizado
-  const rutMap = {};
-  employees.forEach(e => {
-    const key = normalizeRUT(e.rut);
-    if (!key) return;
-    if (!rutMap[key]) rutMap[key] = [];
-    rutMap[key].push(e);
-  });
-
-  // Detectar duplicados por nombre (normalizado)
-  const nameMap = {};
-  employees.forEach(e => {
-    const key = (e.full_name || '').trim().toLowerCase();
-    if (!key) return;
-    if (!nameMap[key]) nameMap[key] = [];
-    nameMap[key].push(e);
-  });
-
-  const rutDupes = Object.values(rutMap).filter(g => g.length > 1);
-  const nameDupes = Object.values(nameMap).filter(g => g.length > 1);
-  const total = rutDupes.length + nameDupes.length;
-
-  const handleDelete = async (emp) => {
-    if (!confirm(`¿Eliminar a "${emp.full_name}" (${emp.rut})? Esta acción no se puede deshacer.`)) return;
-    setDeleting(emp.id);
-    await base44.entities.Employee.delete(emp.id);
-    setDeleting(null);
-    toast.success(`"${emp.full_name}" eliminado`);
-    onDelete();
-  };
-
-  if (total === 0) return null;
-
-  return (
-    <div className="mb-5 border border-amber-300 rounded-lg overflow-hidden">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-amber-50 hover:bg-amber-100 transition-colors text-left"
-      >
-        <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm">
-          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-          {total} grupo{total !== 1 ? 's' : ''} de funcionarios duplicados detectados
-          {rutDupes.length > 0 && <span className="text-xs font-normal text-amber-600">({rutDupes.length} por RUT{nameDupes.length > 0 ? `, ${nameDupes.length} por nombre` : ''})</span>}
-        </div>
-        {open ? <ChevronDown className="w-4 h-4 text-amber-500" /> : <ChevronRight className="w-4 h-4 text-amber-500" />}
-      </button>
-
-      {open && (
-        <div className="bg-white divide-y divide-slate-100 px-4 py-3 space-y-4">
-          {rutDupes.map((group, i) => (
-            <div key={`rut-${i}`}>
-              <p className="text-xs font-semibold text-red-600 mb-1">RUT duplicado: {group[0].rut}</p>
-              <div className="space-y-1">
-                {group.map(e => (
-                  <div key={e.id} className="flex items-center justify-between gap-3">
-                    <Link to={`/EmployeeProfile?id=${e.id}`} className="flex items-center gap-3 text-sm text-slate-700 hover:text-indigo-600 hover:underline">
-                      <span className="font-medium">{e.full_name}</span>
-                      <span className="text-xs text-slate-400">Cat. {e.category} · Niv. {e.current_level} · {e.status}</span>
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(e)}
-                      disabled={deleting === e.id}
-                      className="text-red-400 hover:text-red-600 disabled:opacity-40 p-1"
-                      title="Eliminar este duplicado"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {nameDupes.map((group, i) => (
-            <div key={`name-${i}`}>
-              <p className="text-xs font-semibold text-orange-600 mb-1">Nombre duplicado: {group[0].full_name}</p>
-              <div className="space-y-1">
-                {group.map(e => (
-                  <div key={e.id} className="flex items-center justify-between gap-3">
-                    <Link to={`/EmployeeProfile?id=${e.id}`} className="flex items-center gap-3 text-sm text-slate-700 hover:text-indigo-600 hover:underline">
-                      <span className="font-medium">{e.rut}</span>
-                      <span className="text-xs text-slate-400">Cat. {e.category} · Niv. {e.current_level} · {e.status}</span>
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(e)}
-                      disabled={deleting === e.id}
-                      className="text-red-400 hover:text-red-600 disabled:opacity-40 p-1"
-                      title="Eliminar este duplicado"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function Employees() {
+  const { data: employees = [], isLoading, isError, error } = useEmployees();
+  
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('Activo');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('table'); // 'table' | 'group'
+  const [viewMode, setViewMode] = useState('table');
+  const [hideInactive, setHideInactive] = useState(true);
 
-  const exportToExcel = () => {
-    const headers = ['RUT', 'Nombre', 'Categoría', 'Cargo', 'Unidad', 'Nivel Actual', 'Bienios', 'Pts. Bienio', 'Pts. Capacitación', 'Puntaje Total', 'Estado', 'Tipo Contrato', 'Fecha Ingreso'];
-    const rows = filtered.map(e => [
-      e.rut || '',
-      e.full_name || '',
-      e.category || '',
-      e.position || '',
-      e.department || '',
-      e.current_level ?? '',
-      e.bienios_count ?? 0,
-      e.bienio_points ?? 0,
-      e.training_points ?? 0,
-      e.total_points ?? 0,
-      e.status || '',
-      e.contract_type || '',
-      e.hire_date || '',
-    ]);
+  // Logging
+  logger.info(`Employees page loaded with ${employees.length} employees`);
 
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
+  // Departamentos únicos
+  const departments = useMemo(() => {
+    return [...new Set(employees.map(e => e.department).filter(Boolean))].sort();
+  }, [employees]);
 
-    const bom = '\uFEFF';
-    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `funcionarios_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Filtrar empleados
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp => {
+      if (hideInactive && emp.status === 'Inactivo') return false;
+      
+      const matchesSearch = !search || 
+        emp.name?.toLowerCase().includes(search.toLowerCase()) ||
+        normalizeRUT(emp.rut)?.includes(normalizeRUT(search));
+      
+      const matchesCategory = categoryFilter === 'all' || emp.category === categoryFilter;
+      const matchesStatus = statusFilter === 'all' || emp.status === statusFilter;
+      const matchesDepartment = departmentFilter === 'all' || emp.department === departmentFilter;
+      
+      return matchesSearch && matchesCategory && matchesStatus && matchesDepartment;
+    });
+  }, [employees, search, categoryFilter, statusFilter, departmentFilter, hideInactive]);
+
+  // Estadísticas
+  const stats = useMemo(() => {
+    const activeCount = employees.filter(e => e.status === 'Activo').length;
+    const categories = Object.entries(categoryLabels)
+      .map(([cat, label]) => ({
+        cat,
+        label,
+        count: employees.filter(e => e.category === cat).length
+      }))
+      .filter(c => c.count > 0);
+    
+    return {
+      total: employees.length,
+      active: activeCount,
+      categories
+    };
+  }, [employees]);
+
+  // Agrupar por categoría
+  const groupedByCategory = useMemo(() => {
+    const groups = {};
+    filteredEmployees.forEach(emp => {
+      if (!groups[emp.category]) groups[emp.category] = [];
+      groups[emp.category].push(emp);
+    });
+    return groups;
+  }, [filteredEmployees]);
+
+  // Handlers
+  const handleDelete = async (emp) => {
+    try {
+      logger.info(`Deleting employee: ${emp.id}`);
+      await emp.delete();
+      logger.info(`Employee deleted successfully: ${emp.id}`);
+    } catch (error) {
+      logger.error(`Failed to delete employee: ${emp.id}`, error);
+    }
   };
 
-  const queryClient = useQueryClient();
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin mx-auto mb-4" />
+          <p className="text-slate-600 font-medium">Cargando funcionarios...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const { data: employees = [], isLoading } = useQuery({
-    queryKey: ['employees'],
-    queryFn: () => base44.entities.Employee.list(),
-  });
-
-  // Lista única de establecimientos
-  const departments = [...new Set(employees.map(e => e.department).filter(Boolean))].sort();
-
-  const filtered = employees.filter(e => {
-    const matchSearch = !search || 
-      e.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      e.rut?.includes(search);
-    const matchCategory = categoryFilter === 'all' || e.category === categoryFilter;
-    const matchStatus = statusFilter === 'all' || e.status === statusFilter;
-    const matchDept = departmentFilter === 'all' || e.department === departmentFilter;
-    return matchSearch && matchCategory && matchStatus && matchDept;
-  });
-
-  // Estadísticas rápidas
-  const stats = {
-    total: employees.length,
-    active: employees.filter(e => e.status === 'Activo').length,
-    categories: Object.entries(categoryLabels).map(([cat, label]) => ({
-      cat,
-      label,
-      count: employees.filter(e => e.category === cat).length
-    })),
-    avgLevel: employees.length > 0 ? (employees.reduce((sum, e) => sum + (e.current_level || 0), 0) / employees.length).toFixed(1) : 0,
-  };
+  // Error state
+  if (isError) {
+    logger.error('Error loading employees', error);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="text-center max-w-md">
+          <div className="bg-red-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <p className="text-red-700 font-semibold">Error cargando empleados</p>
+          <p className="text-red-600 text-sm mt-2">{error?.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-8 px-4 sm:px-6 lg:px-8 pb-12">
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        transition={{ duration: 0.5 }}
+        className="max-w-7xl mx-auto"
       >
-        <div>
-          <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-purple-600 tracking-tight pb-1">Funcionarios</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">Gestión integral del personal clínico y administrativo</p>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            Funcionarios
+          </h1>
+          <p className="text-slate-600">Gestión y seguimiento del personal</p>
         </div>
-        <div className="flex gap-3 flex-wrap items-center">
-          <div className="flex bg-white shadow-sm border border-slate-200 rounded-lg p-1">
-            {[
-              { mode: 'table', icon: Table, label: 'Tabla' },
-              { mode: 'group', icon: Layers, label: 'Grupos' },
-            ].map(({ mode, icon: Icon, label }) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                title={label}
-                className={`px-4 py-2 flex items-center gap-2 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === mode ? 'bg-indigo-600 text-white shadow-md transform scale-105' : 'bg-transparent text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
-              >
-                <Icon className="w-4 h-4" /> {label}
-              </button>
-            ))}
-          </div>
-          <Button variant="outline" onClick={exportToExcel} className="flex items-center gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 h-10 px-4 rounded-lg shadow-sm transition-all hover:shadow">
-            <Download className="w-4 h-4" /> Exportar
-          </Button>
-          <Link to="/EmployeeForm">
-            <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white h-10 px-5 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 border-none">
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo
-            </Button>
-          </Link>
+
+        {/* Stats */}
+        <StatsCards stats={stats} />
+
+        {/* Filters & View Toggle */}
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <SearchFiltersBar
+            search={search}
+            onSearchChange={setSearch}
+            categoryFilter={categoryFilter}
+            onCategoryChange={setCategoryFilter}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            departmentFilter={departmentFilter}
+            onDepartmentChange={setDepartmentFilter}
+            departments={departments}
+          />
+          <ViewToggle viewMode={viewMode} onViewChange={setViewMode} />
         </div>
-      </motion.div>
 
-      {/* Cards de estadísticas */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
-      >
-        <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white overflow-hidden relative group">
-          <div className="absolute -right-6 -top-6 opacity-10 transform group-hover:scale-110 transition-transform duration-500"><Users className="w-40 h-40" /></div>
-          <CardContent className="p-6 relative z-10">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-indigo-100 uppercase tracking-widest text-[10px] font-bold mb-2">Total Funcionarios</p>
-                <p className="text-5xl font-black tracking-tighter drop-shadow-md">{stats.total}</p>
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm border border-white/10">{stats.active} activos</span>
-                </div>
-              </div>
-              <div className="bg-white/20 p-3.5 rounded-2xl backdrop-blur-md shadow-inner border border-white/20">
-                <Users className="w-7 h-7 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Duplicates Panel */}
+        <div className="mt-8">
+          <DuplicatesPanel employees={filteredEmployees} onDelete={handleDelete} />
+        </div>
 
-        <Card className="border-none shadow-xl bg-gradient-to-br from-teal-400 via-emerald-500 to-emerald-600 text-white overflow-hidden relative group">
-          <div className="absolute -right-6 -top-6 opacity-10 transform group-hover:scale-110 transition-transform duration-500"><Briefcase className="w-40 h-40" /></div>
-          <CardContent className="p-6 relative z-10">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-emerald-50 uppercase tracking-widest text-[10px] font-bold mb-2">Categorías</p>
-                <p className="text-5xl font-black tracking-tighter drop-shadow-md">{stats.categories.length}</p>
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm border border-white/10">Grupos Profesionales</span>
-                </div>
-              </div>
-              <div className="bg-white/20 p-3.5 rounded-2xl backdrop-blur-md shadow-inner border border-white/20">
-                <Briefcase className="w-7 h-7 text-white" />
-              </div>
+        {/* Results */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">
+                {viewMode === 'table' ? 'Lista de Funcionarios' : 'Agrupado por Categoría'}
+              </h2>
+              <p className="text-slate-500 text-sm mt-1">
+                {filteredEmployees.length} de {employees.length} funcionarios
+              </p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-xl bg-gradient-to-br from-orange-400 via-pink-500 to-rose-500 text-white overflow-hidden relative group">
-          <div className="absolute -right-6 -top-6 opacity-10 transform group-hover:scale-110 transition-transform duration-500"><BarChart3 className="w-40 h-40" /></div>
-          <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full">
-            <div className="flex items-start justify-between mb-4">
-              <p className="text-orange-50 uppercase tracking-widest text-[10px] font-bold">Distribución</p>
-              <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md shadow-inner border border-white/20 shrink-0">
-                <BarChart3 className="w-5 h-5 text-white" />
-              </div>
-            </div>
-            
-            <div className="w-full">
-              <div className="flex gap-1 h-5 bg-black/10 rounded-full w-full backdrop-blur-sm p-1 shadow-inner overflow-hidden">
-                {stats.categories.map(cat => (
-                  <div 
-                    key={cat.cat} 
-                    title={`${cat.label}: ${cat.count}`} 
-                    className="h-full rounded-full bg-white/90 hover:bg-white transition-all cursor-pointer hover:shadow-glow" 
-                    style={{ width: `${(cat.count / stats.total) * 100}%` }} 
-                  />
-                ))}
-              </div>
-              <p className="text-pink-100 text-[10px] uppercase tracking-wider mt-3 font-semibold text-right">Por Categoría</p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="sticky top-4 z-30"
-      >
-        <div className="bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg rounded-2xl overflow-hidden p-4 sm:p-5 transition-all">
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="relative flex-1 w-full">
-              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="Buscar por nombre o RUT..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-11 h-11 bg-white/80 border-slate-200 focus:bg-white rounded-xl shadow-sm text-[15px] focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hideInactive}
+                onChange={e => setHideInactive(e.target.checked)}
+                className="w-5 h-5 rounded border-slate-300 text-indigo-600"
               />
-            </div>
-            <div className="flex gap-3 w-full sm:w-auto">
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-44 h-11 bg-white/80 border-slate-200 focus:bg-white rounded-xl shadow-sm">
-                  <SelectValue placeholder="Categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las Cat.</SelectItem>
-                  {Object.entries(categoryLabels).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{k} — {v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48 h-11 bg-white/80 border-slate-200 focus:bg-white rounded-xl shadow-sm">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="Activo">✓ Activo</SelectItem>
-                  <SelectItem value="Inactivo">✗ Inactivo (No pertenece)</SelectItem>
-                  <SelectItem value="Licencia">📋 Licencia</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                <SelectTrigger className="w-full sm:w-56 h-11 bg-white/80 border-slate-200 focus:bg-white rounded-xl shadow-sm">
-                  <SelectValue placeholder="Establecimiento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los establ.</SelectItem>
-                  {departments.map(d => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <span className="text-sm text-slate-600 font-medium">Ocultar inactivos</span>
+            </label>
           </div>
-        </div>
-      </motion.div>
 
-      <DuplicatesPanel employees={employees} onDelete={() => queryClient.invalidateQueries({ queryKey: ['employees'] })} />
-
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20">
-          <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">No se encontraron funcionarios</p>
-        </div>
-      ) : (
-        <>
-          {filtered.some(e => e.status === 'Inactivo') && (
-            <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg flex gap-2">
-              <AlertTriangle className="w-4 h-4 text-slate-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-slate-600"><strong>Nota:</strong> Los funcionarios con estado "Inactivo" ya no pertenecen a la institución.</p>
+          {/* Table View */}
+          {viewMode === 'table' && (
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">Funcionario</th>
+                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">RUT</th>
+                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">Categoría</th>
+                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">Estado</th>
+                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">Establecimiento</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEmployees.map((emp, idx) => (
+                      <motion.tr
+                        key={emp.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: idx * 0.02 }}
+                        className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback>{emp.name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-slate-900">{emp.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 font-mono text-sm">{emp.rut}</td>
+                        <td className="px-6 py-4">
+                          <Badge className={categoryColors[emp.category]}>
+                            {emp.category} — {categoryLabels[emp.category]}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={emp.status === 'Activo' ? 'default' : 'secondary'}>
+                            {emp.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 text-sm">{emp.department}</td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
-          {viewMode === 'table' ? <EmployeeTableView employees={filtered} /> :
-          <EmployeeGroupView employees={filtered} />}
-        </>
-      )}
+
+          {/* Group View */}
+          {viewMode === 'group' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.entries(groupedByCategory).map(([cat, emps]) => (
+                <motion.div
+                  key={cat}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card className="border-none shadow-lg hover:shadow-xl transition-shadow">
+                    <CardHeader className={`${categoryColors[cat]} rounded-t-xl`}>
+                      <CardTitle className="text-lg">
+                        {cat} — {categoryLabels[cat]}
+                      </CardTitle>
+                      <p className="text-sm opacity-75 mt-1">{emps.length} funcionarios</p>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      <div className="space-y-2">
+                        {emps.map(emp => (
+                          <div key={emp.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg">
+                            <Avatar className="w-6 h-6 shrink-0">
+                              <AvatarFallback className="text-xs">{emp.name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 truncate">{emp.name}</p>
+                              <p className="text-xs text-slate-500">{emp.rut}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {filteredEmployees.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-slate-500 text-lg">No se encontraron funcionarios</p>
+            </div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }

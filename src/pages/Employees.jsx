@@ -35,7 +35,7 @@ export default function Employees() {
       if (hideInactive && emp.status === 'Inactivo') return false;
       
       const matchesSearch = !search || 
-        emp.name?.toLowerCase().includes(search.toLowerCase()) ||
+        emp.full_name?.toLowerCase().includes(search.toLowerCase()) ||
         normalizeRUT(emp.rut)?.includes(normalizeRUT(search));
       
       const matchesCategory = categoryFilter === 'all' || emp.category === categoryFilter;

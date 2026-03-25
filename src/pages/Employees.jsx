@@ -201,9 +201,9 @@ export default function Employees() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-8 h-8">
-                              <AvatarFallback>{emp.name?.charAt(0)}</AvatarFallback>
+                              <AvatarFallback>{emp.full_name?.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            <span className="font-medium text-slate-900">{emp.name}</span>
+                            <span className="font-medium text-slate-900">{emp.full_name}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-600 font-mono text-sm">{emp.rut}</td>

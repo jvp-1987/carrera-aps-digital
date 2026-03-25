@@ -76,13 +76,9 @@ export default function Employees() {
 
   // Handlers
   const handleDelete = async (emp) => {
-    try {
-      logger.info(`Deleting employee: ${emp.id}`);
-      await emp.delete();
-      logger.info(`Employee deleted successfully: ${emp.id}`);
-    } catch (error) {
-      logger.error(`Failed to delete employee: ${emp.id}`, error);
-    }
+    logger.info(`Deleting employee: ${emp.id}`);
+    await base44.entities.Employee.delete(emp.id);
+    logger.info(`Employee deleted successfully: ${emp.id}`);
   };
 
   // Loading state

@@ -248,10 +248,10 @@ export default function Employees() {
                         {emps.map(emp => (
                           <div key={emp.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg">
                             <Avatar className="w-6 h-6 shrink-0">
-                              <AvatarFallback className="text-xs">{emp.name?.charAt(0)}</AvatarFallback>
+                              <AvatarFallback className="text-xs">{emp.full_name?.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 truncate">{emp.name}</p>
+                              <p className="text-sm font-medium text-slate-900 truncate">{emp.full_name}</p>
                               <p className="text-xs text-slate-500">{emp.rut}</p>
                             </div>
                           </div>

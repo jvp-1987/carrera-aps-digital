@@ -7,6 +7,7 @@ import ViewToggle from '@/components/employees/ViewToggle';
 import SearchFiltersBar from '@/components/employees/SearchFiltersBar';
 import DuplicatesPanel from '@/components/employees/DuplicatesPanel';
 import { categoryLabels, categoryColors, normalizeRUT } from '@/components/employees/categoryUtils';
+import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';

@@ -4,7 +4,99 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, Loader } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader, RefreshCw, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, calculatePostitlePercentage } from '@/components/calculations';
+
+function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves }) {
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [stats, setStats] = useState(null);
+  
+  const handleRecalculate = async () => {
+    if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios? Esto puede tomar varios minutos.')) return;
+    
+    setRunning(true);
+    setStats(null);
+    let ok = 0, errors = 0;
+    
+    for (let i = 0; i < employees.length; i++) {
+      const emp = employees[i];
+      try {
+        const empPeriods = servicePeriods.filter(p => p.employee_id === emp.id);
+        const empLeaves = leaves.filter(l => l.employee_id === emp.id);
+        const empTrainings = trainings.filter(t => t.employee_id === emp.id);
+
+        const tLeave = empLeaves.reduce((s, l) => s + parseInt(l.days_count || 0), 0);
+        const eDays = calculateEffectiveDays(empPeriods, tLeave);
+        const b = calculateBienios(eDays);
+        const bp = calculateBienioPoints(emp.category, b);
+        const nbd = calculateNextBienioDate(empPeriods, tLeave, b);
+
+        const validated = empTrainings.filter(t => t.status === 'Validado');
+        const tPts = validated.reduce((s, t) => s + (parseFloat(t.calculated_points) || 0), 0);
+        const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (parseFloat(t.postitle_hours) || 0), 0);
+        const pPct = calculatePostitlePercentage(emp.category, pHours);
+
+        const totalPts = Math.round((bp + tPts) * 100) / 100;
+
+        await base44.entities.Employee.update(emp.id, {
+          total_experience_days: eDays,
+          total_leave_days: tLeave,
+          bienios_count: b,
+          bienio_points: bp,
+          next_bienio_date: nbd,
+          training_points: tPts,
+          postitle_percentage: pPct,
+          total_points: totalPts,
+        });
+        ok++;
+      } catch (err) {
+        console.error(`Error updating employee ${emp.id}:`, err);
+        errors++;
+      }
+      setProgress(Math.round(((i + 1) / employees.length) * 100));
+    }
+    
+    setRunning(false);
+    setStats({ ok, errors });
+    toast.success(`Recálculo masivo terminado. Actualizados: ${ok}, Errores: ${errors}`);
+  };
+
+  return (
+    <Card className="border-indigo-200 bg-indigo-50 mt-6 shadow-sm">
+      <CardContent className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-indigo-900 flex items-center gap-2">
+            <RefreshCw className="w-5 h-5 text-indigo-600" /> Recálculo Masivo de Puntajes
+          </h3>
+          <p className="text-sm text-indigo-700 mt-1 max-w-xl">
+            Esta herramienta recalcula y actualiza los días efectivos, bienios contables, puntos de experiencia y puntos 
+            de capacitación de los {employees.length} funcionarios basándose en la última data registrada.
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2 text-sm text-indigo-800 font-medium whitespace-nowrap w-full md:w-auto">
+          {running ? (
+            <div className="flex items-center gap-2 bg-indigo-100 px-4 py-2 rounded-md border border-indigo-200 w-full md:w-auto justify-center">
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-600"/> Procesando... {progress}%
+            </div>
+          ) : (
+            <>
+              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 w-full md:w-auto text-sm" onClick={handleRecalculate}>
+                Iniciar Recálculo ({employees.length})
+              </Button>
+              {stats && (
+                <p className="text-xs text-indigo-600/80">
+                  Último: ✓ {stats.ok} {stats.errors > 0 && `| ✗ ${stats.errors}`}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DataAudit() {
 
@@ -21,6 +113,11 @@ export default function DataAudit() {
   const { data: trainings = [] } = useQuery({
     queryKey: ['trainings-audit'],
     queryFn: () => base44.entities.Training.list(null, 5000),
+  });
+
+  const { data: leaves = [] } = useQuery({
+    queryKey: ['leaves-audit'],
+    queryFn: () => base44.entities.LeaveWithoutPay.list(null, 5000),
   });
 
   const isLoading = empLoading;
@@ -58,6 +155,8 @@ export default function DataAudit() {
         <h1 className="text-2xl font-bold text-slate-900">Auditoría de Datos</h1>
         <p className="text-sm text-slate-500 mt-1">Funcionarios sin información de experiencia o capacitación</p>
       </div>
+
+      <RecalcularPuntajesMasivo employees={employees} servicePeriods={servicePeriods} trainings={trainings} leaves={leaves} />
 
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

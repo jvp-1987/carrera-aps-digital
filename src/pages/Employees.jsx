@@ -80,22 +80,27 @@ export default function Employees() {
   }, [filteredEmployees]);
 
   const handleExportExcel = () => {
-    const rows = filteredEmployees.map(emp => ({
-      'Nombre': emp.full_name || '',
-      'RUT': emp.rut || '',
-      'Categoría': emp.category || '',
-      'Cargo': emp.position || '',
-      'Establecimiento': emp.department || '',
-      'Estado': emp.status || '',
-      'Tipo Contrato': emp.contract_type || '',
-      'Nivel Actual': emp.current_level || '',
-      'Puntaje Total': emp.total_points || '',
-      'Bienios': emp.bienios_count || '',
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Funcionarios');
-    XLSX.writeFile(wb, `funcionarios_${new Date().toISOString().slice(0,10)}.xlsx`);
+    const headers = ['Nombre','RUT','Categoría','Cargo','Establecimiento','Estado','Tipo Contrato','Nivel Actual','Puntaje Total','Bienios'];
+    const rows = filteredEmployees.map(emp => [
+      emp.full_name || '',
+      emp.rut || '',
+      emp.category || '',
+      emp.position || '',
+      emp.department || '',
+      emp.status || '',
+      emp.contract_type || '',
+      emp.current_level || '',
+      emp.total_points || '',
+      emp.bienios_count || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `funcionarios_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // Handlers

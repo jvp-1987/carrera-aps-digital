@@ -6,9 +6,9 @@ describe('RUT utils', () => {
   });
 
   it('validateRUT valida formatos correctos e incorrectos', () => {
-    expect(validateRUT('12.345.678-k')).toBe(true);
+    expect(validateRUT('11.111.111-1')).toBe(true);
     expect(validateRUT('12345678')).toBe(false);
-    expect(validateRUT('12.345.678-Z')).toBe(false);
+    expect(validateRUT('11.111.111-Z')).toBe(false);
   });
 
   it('formatRUT formatea correctamente', () => {

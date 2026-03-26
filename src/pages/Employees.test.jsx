@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import Employees from './Employees';
 
 vi.mock('@/hooks/useEmployees', () => ({
@@ -16,7 +17,11 @@ vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn(), error: vi.fn() }}));
 
 describe('Employees page', () => {
   it('muestra la lista y el contador', () => {
-    render(<Employees />);
+    render(
+      <MemoryRouter>
+        <Employees />
+      </MemoryRouter>
+    );
     expect(screen.getByText('Funcionarios')).toBeInTheDocument();
     expect(screen.getByText('1 de 1 funcionarios')).toBeInTheDocument();
   });

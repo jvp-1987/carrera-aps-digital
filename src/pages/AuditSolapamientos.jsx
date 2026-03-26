@@ -50,6 +50,8 @@ function nextDay(dateStr) {
   return d.toISOString().split('T')[0];
 }
 
+const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
 // ── Componente principal ─────────────────────────────────────────
 export default function AuditSolapamientos() {
   const queryClient = useQueryClient();
@@ -117,6 +119,7 @@ export default function AuditSolapamientos() {
     for (const d of duplicates) {
       await base44.entities.ServicePeriod.delete(d.duplicate.id);
       count++;
+      await sleep(300);
     }
     toast.success(`${count} duplicado(s) eliminados`);
     queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
@@ -139,6 +142,7 @@ export default function AuditSolapamientos() {
           solapamiento_detalle: `Ajustado masivamente a 0 días por solapamiento con ${ov.a.start_date}→${ov.a.end_date}`,
         });
         count++;
+        await sleep(300);
       }
     }
     toast.success(`${count} períodos solapados fueron ajustados a 0 días.`);

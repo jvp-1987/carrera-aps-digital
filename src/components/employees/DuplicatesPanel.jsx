@@ -1,48 +1,67 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Trash2 } from 'lucide-react';
-import { normalizeRUT } from './categoryUtils';
+import { AlertTriangle } from 'lucide-react';
 
 export default function DuplicatesPanel({ employees, onDelete }) {
   const duplicates = useMemo(() => {
-    const seen = {};
-    const dupes = [];
+    const seen = new Map();
+    const dups = [];
+    
     employees.forEach(emp => {
-      const key = normalizeRUT(emp.rut);
-      if (!key) return;
-      if (!seen[key]) {
-        seen[key] = emp;
+      const key = `${emp.rut}-${emp.name}`;
+      if (seen.has(key)) {
+        if (!dups.some(d => d.key === key)) {
+          dups.push({ key, employees: [seen.get(key), emp] });
+        } else {
+          dups.find(d => d.key === key).employees.push(emp);
+        }
       } else {
-        dupes.push({ original: seen[key], duplicate: emp });
+        seen.set(key, emp);
       }
     });
-    return dupes;
+    
+    return dups;
   }, [employees]);
 
   if (duplicates.length === 0) return null;
 
   return (
-    <Card className="border-orange-200 bg-orange-50">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2 text-orange-800">
-          <Copy className="w-4 h-4" /> {duplicates.length} RUT(s) duplicado(s) detectado(s)
+    <Card className="border-amber-200 bg-amber-50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-amber-800">
+          <AlertTriangle className="w-5 h-5" />
+          Duplicados Encontrados ({duplicates.length})
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {duplicates.map(({ original, duplicate }) => (
-          <div key={duplicate.id} className="flex items-center justify-between bg-white border border-orange-200 rounded-lg px-3 py-2 text-xs">
-            <div>
-              <span className="font-semibold text-slate-800">{duplicate.full_name}</span>
-              <span className="ml-2 text-slate-500 font-mono">{duplicate.rut}</span>
-              <Badge className="ml-2 bg-orange-100 text-orange-700 text-[10px]">Duplicado de: {original.full_name}</Badge>
+      <CardContent>
+        <div className="space-y-4">
+          {duplicates.map((dup, idx) => (
+            <div key={idx} className="border border-amber-200 rounded-lg p-4 bg-white">
+              <div className="flex items-center justify-between mb-2">
+                <Badge variant="outline" className="border-amber-300 text-amber-700">
+                  {dup.employees.length} duplicados
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                {dup.employees.map((emp, i) => (
+                  <div key={emp.id} className="flex items-center justify-between p-2 bg-amber-50 rounded">
+                    <div>
+                      <span className="font-medium">{emp.name}</span>
+                      <span className="text-sm text-gray-600 ml-2">{emp.rut}</span>
+                    </div>
+                    <button
+                      onClick={() => onDelete(emp)}
+                      className="text-red-600 hover:text-red-800 text-sm underline"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-            <Button size="sm" variant="destructive" className="h-6 text-[11px]" onClick={() => onDelete(duplicate)}>
-              <Trash2 className="w-3 h-3 mr-1" /> Eliminar
-            </Button>
-          </div>
-        ))}
+          ))}
+        </div>
       </CardContent>
     </Card>
   );

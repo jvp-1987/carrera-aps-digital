@@ -21,6 +21,7 @@ import GestionEspecial from '@/pages/GestionEspecial';
 import DataAudit from '@/pages/DataAudit';
 import AuditSolapamientos from '@/pages/AuditSolapamientos';
 import ImportarExperiencia from '@/pages/ImportarExperiencia';
+import TablaSalarial from '@/pages/TablaSalarial';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
         <Route path="/DataAudit" element={<DataAudit />} />
         <Route path="/AuditSolapamientos" element={<AuditSolapamientos />} />
         <Route path="/ImportarExperiencia" element={<ImportarExperiencia />} />
+        <Route path="/TablaSalarial" element={<TablaSalarial />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

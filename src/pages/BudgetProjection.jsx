@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { TrendingUp, DollarSign, Users, AlertTriangle, FileText, Calendar } from 'lucide-react';
-import { checkPromotion, LEVEL_RANGES_AB, LEVEL_RANGES_CF } from '@/components/calculations';
-import { getSueldoBase } from '@/components/profile/SalarialTab';
+import { checkPromotion } from '@/components/calculations';
+import { getSueldoBase, formatCLP } from '@/constants/salaryTable';
 
 const CATEGORY_LABELS = {
   A: 'A — Médicos/Dentistas',
@@ -24,10 +24,6 @@ const CATEGORY_COLORS = {
   E: 'bg-orange-100 text-orange-700 border-orange-200',
   F: 'bg-slate-100 text-slate-700 border-slate-200',
 };
-
-function formatCLP(n) {
-  return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-}
 
 function getSueldo(category, level) {
   return getSueldoBase(category, level) ?? 0;
@@ -160,8 +156,8 @@ export default function BudgetProjection() {
                     <span className="text-xs text-slate-400 ml-1">/ mes</span>
                   </div>
                 </div>
-                <div className="rounded-lg overflow-hidden border border-slate-100">
-                  <table className="w-full text-sm">
+                <div className="rounded-lg overflow-hidden border border-slate-100 overflow-x-auto">
+                  <table className="w-full text-sm min-w-[600px]">
                     <thead className="bg-slate-50 text-xs text-slate-500">
                       <tr>
                         <th className="text-left px-3 py-2 font-medium">Funcionario</th>

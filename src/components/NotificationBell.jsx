@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Bell, X, TrendingUp, Clock, GraduationCap, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Bell, X, TrendingUp, Clock, GraduationCap, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { checkPromotion, daysUntilClosure } from '@/components/calculations';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
-function buildNotifications(employees, trainings) {
+function buildNotifications(employees, trainings, resolutions) {
   const notifications = [];
   const today = new Date();
 
@@ -73,6 +74,25 @@ function buildNotifications(employees, trainings) {
     }
   });
 
+  // Vencimientos de contratos (30 días)
+  employees.forEach(emp => {
+    if (!emp.contract_end_date || emp.status === 'Inactivo') return;
+    const diff = new Date(emp.contract_end_date) - today;
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    if (days >= 0 && days <= 30) {
+      notifications.push({
+        id: `contract-${emp.id}-${emp.contract_end_date}`,
+        type: 'warning',
+        icon: AlertTriangle,
+        color: 'text-red-500',
+        bg: 'bg-red-50',
+        title: `Contrato por vencer — ${emp.full_name}`,
+        body: `Fin contrato: ${emp.contract_end_date} (en ${days} días)`,
+        link: `/EmployeeProfile?id=${emp.id}`,
+      });
+    }
+  });
+
   // Capacitaciones pendientes de validación
   const pending = trainings.filter(t => t.status === 'Pendiente' && t.certificate_url);
   if (pending.length > 0) {
@@ -88,6 +108,21 @@ function buildNotifications(employees, trainings) {
     });
   }
 
+  // Resoluciones Borrador pendientes
+  const pendingResolutions = (resolutions || []).filter(r => r.status === 'Borrador');
+  if (pendingResolutions.length > 0) {
+    notifications.push({
+      id: 'pending-resolutions',
+      type: 'info',
+      icon: FileText,
+      color: 'text-indigo-500',
+      bg: 'bg-indigo-50',
+      title: `${pendingResolutions.length} resolución(es) en borrador`,
+      body: 'Hay actos administrativos pendientes de revisión o firma.',
+      link: '/Resolutions',
+    });
+  }
+
   return notifications;
 }
 
@@ -100,8 +135,9 @@ export default function NotificationBell({ collapsed }) {
 
   const { data: employees = [] } = useQuery({ queryKey: ['employees'], queryFn: () => base44.entities.Employee.list() });
   const { data: trainings = [] } = useQuery({ queryKey: ['trainings'], queryFn: () => base44.entities.Training.list() });
+  const { data: resolutions = [] } = useQuery({ queryKey: ['all-resolutions'], queryFn: () => base44.entities.Resolution.list() });
 
-  const all = buildNotifications(employees, trainings);
+  const all = buildNotifications(employees, trainings, resolutions);
   const visible = all.filter(n => !dismissed.includes(n.id));
   const count = visible.length;
 
@@ -119,6 +155,31 @@ export default function NotificationBell({ collapsed }) {
     localStorage.setItem('dismissed_notifs', JSON.stringify(next));
     setOpen(false);
   };
+
+  const [toasted, setToasted] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('toasted_notifs') || '[]'); } catch { return []; }
+  });
+
+  useEffect(() => {
+    if (visible.length > 0) {
+      const newNotifs = visible.filter(n => !toasted.includes(n.id));
+      if (newNotifs.length > 0) {
+        newNotifs.forEach(n => {
+          if (n.type === 'warning' || n.type === 'error') {
+            toast.warning(n.title, { description: n.body, duration: 6000 });
+          } else if (n.type === 'success') {
+            toast.success(n.title, { description: n.body, duration: 5000 });
+          } else {
+            toast.info(n.title, { description: n.body, duration: 5000 });
+          }
+        });
+        
+        const nextToasted = [...toasted, ...newNotifs.map(n => n.id)];
+        setToasted(nextToasted);
+        localStorage.setItem('toasted_notifs', JSON.stringify(nextToasted));
+      }
+    }
+  }, [visible, toasted]);
 
   // Close panel on outside click
   useEffect(() => {

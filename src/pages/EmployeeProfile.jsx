@@ -83,11 +83,12 @@ export default function EmployeeProfile() {
       bienios_count: parseInt(headerForm.bienios_count) || employee.bienios_count,
       total_points: parseFloat(headerForm.total_points) || employee.total_points,
       status: headerForm.status || employee.status,
+      contract_end_date: headerForm.contract_end_date !== undefined ? headerForm.contract_end_date : employee.contract_end_date,
     });
   };
 
   const handleEditHeaderOpen = () => {
-    setHeaderForm({rut: employee.rut, full_name: employee.full_name, category: employee.category, current_level: employee.current_level, position: employee.position, bienios_count: employee.bienios_count, total_points: employee.total_points, status: employee.status});
+    setHeaderForm({rut: employee.rut, full_name: employee.full_name, category: employee.category, current_level: employee.current_level, position: employee.position, bienios_count: employee.bienios_count, total_points: employee.total_points, status: employee.status, contract_end_date: employee.contract_end_date || ''});
     setEditingHeader(true);
   };
 
@@ -166,6 +167,10 @@ export default function EmployeeProfile() {
                     <option value="Inactivo">Inactivo</option>
                     <option value="Licencia">Licencia</option>
                   </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Fin Contrato</label>
+                  <Input type="date" value={headerForm.contract_end_date || employee.contract_end_date || ''} onChange={e => setHeaderForm({...headerForm, contract_end_date: e.target.value})} className="text-sm h-8 mt-1" />
                 </div>
               </div>
               <div className="flex gap-2 pt-3">

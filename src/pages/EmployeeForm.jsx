@@ -20,7 +20,7 @@ export default function EmployeeForm() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     rut: '', full_name: '', category: '', current_level: 15,
-    position: '', department: '', hire_date: '', contract_type: '',
+    position: '', department: '', hire_date: '', contract_end_date: '', contract_type: '',
     email: '', phone: '', status: 'Activo',
   });
 
@@ -139,6 +139,10 @@ export default function EmployeeForm() {
               <div>
                 <Label>Fecha de Ingreso</Label>
                 <Input type="date" value={form.hire_date} onChange={e => update('hire_date', e.target.value)} />
+              </div>
+              <div>
+                <Label>Fin de Contrato</Label>
+                <Input type="date" value={form.contract_end_date} onChange={e => update('contract_end_date', e.target.value)} />
               </div>
               <div>
                 <Label>Tipo de Contrato</Label>

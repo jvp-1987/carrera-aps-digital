@@ -47,6 +47,9 @@ export function calculateBienios(effectiveDays) {
 
 // Calcula días reales de un periodo a partir de sus fechas
 function getDaysFromPeriod(p) {
+  if (p.ajustado_por_solapamiento || p.conflict_status === 'Ajustado') {
+    return typeof p.days_count === 'number' ? p.days_count : 0;
+  }
   if (p.start_date) {
     const start = new Date(p.start_date);
     const end = p.end_date ? new Date(p.end_date) : new Date();

@@ -54,6 +54,7 @@ function nextDay(dateStr) {
 export default function AuditSolapamientos() {
   const queryClient = useQueryClient();
   const [resolving, setResolving] = useState(null);
+  const [resolvingAll, setResolvingAll] = useState(false);
   const [deletingDupe, setDeletingDupe] = useState(null);
   const [deletingAllDupes, setDeletingAllDupes] = useState(false);
 
@@ -122,34 +123,40 @@ export default function AuditSolapamientos() {
     setDeletingAllDupes(false);
   };
 
+  // ── Resolver todos los solapamientos ────────────────────────────
+  const handleResolveAll = async () => {
+    if (!confirm('¿Seguro que deseas establecer en 0 días TODOS los períodos solapados detectados? Las fechas se conservarán.')) return;
+    setResolvingAll(true);
+    let count = 0;
+    for (const item of overlapsResults) {
+      for (const ov of item.overlaps) {
+        // Obviar los que ya están en 0
+        if (ov.b.ajustado_por_solapamiento && ov.b.days_count === 0) continue;
+        await base44.entities.ServicePeriod.update(ov.b.id, {
+          days_count: 0,
+          ajustado_por_solapamiento: true,
+          conflict_status: 'Ajustado',
+          solapamiento_detalle: `Ajustado masivamente a 0 días por solapamiento con ${ov.a.start_date}→${ov.a.end_date}`,
+        });
+        count++;
+      }
+    }
+    toast.success(`${count} períodos solapados fueron ajustados a 0 días.`);
+    queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
+    setResolvingAll(false);
+  };
+
   // ── Resolver solapamiento ───────────────────────────────────────
   const handleResolve = async (ov) => {
     const { a, b } = ov;
-    const aEnd = a.end_date;
-    if (!aEnd) {
-      toast.error('El período anterior no tiene fecha de término. Corrígelo manualmente.');
-      return;
-    }
-    const newStart = nextDay(aEnd);
-    if (!newStart) { toast.error('Fecha inválida'); return; }
-    let newEnd = b.end_date;
-    let newDays = 0;
-    if (!newEnd || newStart <= newEnd) {
-      newDays = newEnd ? calcDays(newStart, newEnd) : 0;
-    } else {
-      newEnd = newStart;
-      newDays = 0;
-    }
     setResolving(b.id);
     await base44.entities.ServicePeriod.update(b.id, {
-      start_date: newStart,
-      end_date: newEnd,
-      days_count: newDays,
+      days_count: 0,
       ajustado_por_solapamiento: true,
       conflict_status: 'Ajustado',
-      solapamiento_detalle: `Ajustado automáticamente: inicio movido de ${b.start_date} a ${newStart} por solapamiento con período ${a.start_date}→${a.end_date}`,
+      solapamiento_detalle: `Ajustado a 0 días por solapamiento con ${a.start_date}→${a.end_date}`,
     });
-    toast.success(`Período ajustado: nueva fecha inicio ${newStart} · ${newDays} días`);
+    toast.success(`Período penalizado a 0 días (fechas intactas)`);
     queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
     setResolving(null);
   };
@@ -260,10 +267,28 @@ export default function AuditSolapamientos() {
 
       {/* ── Sección solapamientos ── */}
       <div className="space-y-3">
-        <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-red-500" /> Solapamientos de fechas
-        </h2>
-        <p className="text-xs text-slate-500">Períodos distintos que se superponen en fechas. Conserva el mayor y ajusta el menor a 0 días.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500" /> Solapamientos de fechas
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">Períodos distintos que se superponen en fechas. Se conserva el mayor y se ajusta el menor a 0 días sin borrar sus fechas.</p>
+          </div>
+          {overlapsResults.length > 0 && (
+            <Button
+              size="sm"
+              variant="default"
+              className="bg-red-600 hover:bg-red-700 text-xs"
+              disabled={resolvingAll}
+              onClick={handleResolveAll}
+            >
+              {resolvingAll
+                ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Resolviendo todos...</>
+                : <><Wrench className="w-3 h-3 mr-1" /> Subsanar todos a 0 días ({overlapsResults.length})</>
+              }
+            </Button>
+          )}
+        </div>
 
         {overlapsResults.length === 0 ? (
           <Card className="border-emerald-200 bg-emerald-50">
@@ -320,8 +345,8 @@ export default function AuditSolapamientos() {
                             <Badge className="bg-amber-100 text-amber-700 text-[9px] mb-1">Se ajusta</Badge>
                             <p className="font-medium text-slate-700">{ov.b.institution}</p>
                             <p className="text-slate-500">{ov.b.period_type}</p>
-                            <p className="text-slate-600 font-mono line-through text-slate-400">{ov.b.start_date} → {ov.b.end_date || 'vigente'}</p>
-                            <p className="text-amber-700 font-mono font-semibold">{newStart} → {ov.b.end_date || '?'} ({newDays} días)</p>
+                            <p className="text-slate-600 font-mono">{ov.b.start_date} → {ov.b.end_date || 'vigente'}</p>
+                            <p className="text-amber-700 font-mono font-semibold">0 días (Anulado por solape)</p>
                           </div>
                         </div>
                       </div>

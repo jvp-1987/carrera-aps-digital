@@ -197,7 +197,7 @@ export function checkPromotion(currentLevel, totalPoints, category = 'C') {
   return {
     eligible: totalPoints >= range.min,
     nextLevel,
-    pointsNeeded: Math.max(0, range.min - totalPoints),
+    pointsNeeded: Math.round(Math.max(0, range.min - totalPoints) * 100) / 100,
     currentRange: ranges[currentLevel],
     nextRange: range,
   };
@@ -211,7 +211,7 @@ export function calculateTrainingGap(currentLevel, bienioPoints, trainingPoints,
   const range = ranges[nextLevel];
   if (!range) return { gap: 0, trainingGap: 0, message: 'Sin datos del nivel' };
   const totalPoints = bienioPoints + trainingPoints;
-  const gap = Math.max(0, range.min - totalPoints);
+  const gap = Math.round(Math.max(0, range.min - totalPoints) * 100) / 100;
   return {
     gap,
     trainingGap: gap,

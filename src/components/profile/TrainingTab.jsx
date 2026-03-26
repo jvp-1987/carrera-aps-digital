@@ -83,13 +83,14 @@ export default function TrainingTab({ employee }) {
       // Recalcular puntos del empleado
       const allTrainings = await base44.entities.Training.filter({ employee_id: employee.id });
       const validated = allTrainings.filter(t => t.status === 'Validado' || t.id === training.id);
-      const totalPts = validated.reduce((s, t) => s + (t.calculated_points || 0), 0);
+      const rawPts = validated.reduce((s, t) => s + (t.calculated_points || 0), 0);
+      const totalPts = Math.round(rawPts * 100) / 100;
       const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
       const pPct = calculatePostitlePercentage(employee.category, pHours);
       await base44.entities.Employee.update(employee.id, {
         training_points: totalPts,
         postitle_percentage: pPct,
-        total_points: (employee.bienio_points || 0) + totalPts,
+        total_points: Math.round(((employee.bienio_points || 0) + totalPts) * 100) / 100,
       });
     },
     onSuccess: () => {

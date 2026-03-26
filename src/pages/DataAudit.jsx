@@ -8,6 +8,28 @@ import { AlertTriangle, CheckCircle2, Loader, RefreshCw, Loader2 } from 'lucide-
 import { toast } from 'sonner';
 import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, calculatePostitlePercentage } from '@/components/calculations';
 
+// Helper: Exponential Backoff para mitigar errores 429
+const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      const result = await apiFn();
+      await new Promise(r => setTimeout(r, baseDelay));
+      return result;
+    } catch (err) {
+      const isRateLimit = err?.response?.status === 429 || err?.status === 429 || String(err).includes('429') || String(err).toLowerCase().includes('rate limit');
+      if (isRateLimit && attempt < maxRetries - 1) {
+        const backoffDelay = baseDelay * Math.pow(2, attempt + 1);
+        console.warn(`[API] Rate limit (429) detectado en recálculo. Reintentando en ${backoffDelay}ms... `);
+        await new Promise(r => setTimeout(r, backoffDelay));
+        attempt++;
+      } else {
+        throw err;
+      }
+    }
+  }
+};
+
 function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves }) {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -40,7 +62,7 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
 
         const totalPts = Math.round((bp + tPts) * 100) / 100;
 
-        await base44.entities.Employee.update(emp.id, {
+        await safeApiCall(() => base44.entities.Employee.update(emp.id, {
           total_experience_days: eDays,
           total_leave_days: tLeave,
           bienios_count: b,
@@ -49,10 +71,9 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
           training_points: tPts,
           postitle_percentage: pPct,
           total_points: totalPts,
-        });
+        }), 6, 400);
+
         ok++;
-        // Throttle para evitar rate limit
-        await new Promise(r => setTimeout(r, 200));
       } catch (err) {
         console.error(`Error updating employee ${emp.id}:`, err);
         errors++;

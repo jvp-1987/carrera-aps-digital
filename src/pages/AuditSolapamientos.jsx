@@ -52,6 +52,28 @@ function nextDay(dateStr) {
 
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
+// Helper: Llamada a la API con Exponential Backoff para evitar errores 429 (Rate Limit)
+const safeApiCall = async (apiFn, maxRetries = 4, baseDelay = 500) => {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      const result = await apiFn();
+      await sleep(baseDelay); // Descanso base tras éxito
+      return result;
+    } catch (err) {
+      const isRateLimit = err?.response?.status === 429 || err?.status === 429 || String(err).includes('429') || String(err).toLowerCase().includes('rate limit');
+      if (isRateLimit && attempt < maxRetries - 1) {
+        const backoffDelay = baseDelay * Math.pow(2, attempt + 1); // 1000, 2000, 4000...
+        console.warn(`[API] Rate limit detectado (Intento ${attempt + 1}). Pausando ${backoffDelay}ms...`);
+        await sleep(backoffDelay);
+        attempt++;
+      } else {
+        throw err;
+      }
+    }
+  }
+};
+
 // ── Componente principal ─────────────────────────────────────────
 export default function AuditSolapamientos() {
   const queryClient = useQueryClient();
@@ -106,7 +128,7 @@ export default function AuditSolapamientos() {
   // ── Eliminar un duplicado ───────────────────────────────────────
   const handleDeleteDupe = async (period) => {
     setDeletingDupe(period.id);
-    await base44.entities.ServicePeriod.delete(period.id);
+    await safeApiCall(() => base44.entities.ServicePeriod.delete(period.id));
     toast.success(`Duplicado eliminado`);
     queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
     setDeletingDupe(null);
@@ -117,10 +139,8 @@ export default function AuditSolapamientos() {
     setDeletingAllDupes(true);
     let count = 0;
     for (const d of duplicates) {
-      await base44.entities.ServicePeriod.delete(d.duplicate.id);
+      await safeApiCall(() => base44.entities.ServicePeriod.delete(d.duplicate.id), 5, 400);
       count++;
-      // Throttle para evitar rate limit (429)
-      await sleep(300);
     }
     toast.success(`${count} duplicado(s) eliminados`);
     queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
@@ -136,15 +156,15 @@ export default function AuditSolapamientos() {
       for (const ov of item.overlaps) {
         // Obviar los que ya están en 0
         if (ov.b.ajustado_por_solapamiento && ov.b.days_count === 0) continue;
-        await base44.entities.ServicePeriod.update(ov.b.id, {
+        
+        await safeApiCall(() => base44.entities.ServicePeriod.update(ov.b.id, {
           days_count: 0,
           ajustado_por_solapamiento: true,
           conflict_status: 'Ajustado',
           solapamiento_detalle: `Ajustado masivamente a 0 días por solapamiento con ${ov.a.start_date}→${ov.a.end_date}`,
-        });
+        }), 5, 400);
+        
         count++;
-        // Throttle para evitar rate limit (429)
-        await sleep(300);
       }
     }
     toast.success(`${count} períodos solapados fueron ajustados a 0 días.`);
@@ -156,12 +176,12 @@ export default function AuditSolapamientos() {
   const handleResolve = async (ov) => {
     const { a, b } = ov;
     setResolving(b.id);
-    await base44.entities.ServicePeriod.update(b.id, {
+    await safeApiCall(() => base44.entities.ServicePeriod.update(b.id, {
       days_count: 0,
       ajustado_por_solapamiento: true,
       conflict_status: 'Ajustado',
       solapamiento_detalle: `Ajustado a 0 días por solapamiento con ${a.start_date}→${a.end_date}`,
-    });
+    }));
     toast.success(`Período penalizado a 0 días (fechas intactas)`);
     queryClient.invalidateQueries({ queryKey: ['service-periods-overlap-audit'] });
     setResolving(null);

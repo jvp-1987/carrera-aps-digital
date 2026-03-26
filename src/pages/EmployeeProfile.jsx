@@ -231,7 +231,7 @@ export default function EmployeeProfile() {
             <p className="text-xs font-semibold text-emerald-600">CAPACITACIÓN</p>
             <BookOpen className="w-4 h-4 text-emerald-500" />
           </div>
-          <p className="text-2xl font-bold text-emerald-900">{employee.training_points || 0}</p>
+          <p className="text-2xl font-bold text-emerald-900">{(employee.training_points || 0).toFixed(1)}</p>
           <p className="text-xs text-emerald-600 mt-1">Puntos de cursos</p>
         </div>
 
@@ -240,7 +240,7 @@ export default function EmployeeProfile() {
             <p className="text-xs font-semibold text-violet-600">TOTAL</p>
             <Award className="w-4 h-4 text-violet-500" />
           </div>
-          <p className="text-2xl font-bold text-violet-900">{employee.total_points || 0}</p>
+          <p className="text-2xl font-bold text-violet-900">{(employee.total_points || 0).toFixed(1)}</p>
           <p className="text-xs text-violet-600 mt-1">Puntaje total</p>
         </div>
 

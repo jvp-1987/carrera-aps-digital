@@ -32,7 +32,8 @@ export default function TrainingTab({ employee }) {
   });
 
   const validatedTrainings = trainings.filter(t => t.status === 'Validado');
-  const totalTrainingPoints = validatedTrainings.reduce((s, t) => s + (t.calculated_points || 0), 0);
+  const rawTrainingPoints = validatedTrainings.reduce((s, t) => s + (t.calculated_points || 0), 0);
+  const totalTrainingPoints = Math.round(rawTrainingPoints * 100) / 100;
   const postitleHours = validatedTrainings.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
   const postitlePct = calculatePostitlePercentage(employee.category, postitleHours);
 
@@ -143,7 +144,7 @@ export default function TrainingTab({ employee }) {
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-xs text-slate-400 mb-1">Pts. Capacitación</p>
-            <p className="text-2xl font-bold text-indigo-600">{totalTrainingPoints.toFixed(0)}</p>
+            <p className="text-2xl font-bold text-indigo-600">{totalTrainingPoints.toFixed(1)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -288,7 +289,7 @@ export default function TrainingTab({ employee }) {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={statusColors[t.status]}>{t.status}</Badge>
-                    <Badge variant="outline">{t.calculated_points?.toFixed(0)} pts</Badge>
+                    <Badge variant="outline">{t.calculated_points?.toFixed(1)} pts</Badge>
                     {t.status === 'Pendiente' && t.certificate_url && (
                       <Button size="sm" variant="outline" className="text-xs" onClick={() => validateTraining.mutate(t)}>
                         Validar

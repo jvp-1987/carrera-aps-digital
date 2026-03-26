@@ -24,7 +24,7 @@ export default function SalarialTab({ employee }) {
   const lvl = employee.current_level;
 
   const isValidLevel = VALID_LEVELS.includes(lvl);
-  const isValidCategory = Object.keys(SALARY_TABLE_2026).includes(cat);
+  const isValidCategory = Object.keys(SALARY_TABLE).includes(cat);
   const hasInconsistency = !isValidLevel || !isValidCategory;
 
   const sueldoBase = getSueldoBase(cat, lvl);

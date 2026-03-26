@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Search, Plus, Upload } from 'lucide-react';
+import { FileText, Search, Plus, Upload, FileDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import GenerarResolucionDialog from '@/components/resolutions/GenerarResolucionDialog';
 
 const statusColors = {
   'Borrador': 'bg-slate-100 text-slate-600',
@@ -38,6 +39,7 @@ export default function Resolutions() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [uploading, setUploading] = useState(false);
+  const [generarDialog, setGenerarDialog] = useState({ open: false, resolution: null });
   const queryClient = useQueryClient();
 
   const { data: resolutions = [], isLoading } = useQuery({
@@ -285,6 +287,14 @@ export default function Resolutions() {
                     {r.file_url && (
                       <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 text-xs hover:underline">Ver PDF</a>
                     )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                      onClick={() => setGenerarDialog({ open: true, resolution: r })}
+                    >
+                      <FileDown className="w-3.5 h-3.5" /> Generar PDF
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -292,6 +302,13 @@ export default function Resolutions() {
           })}
         </div>
       )}
+
+      <GenerarResolucionDialog
+        open={generarDialog.open}
+        onOpenChange={(v) => setGenerarDialog(d => ({ ...d, open: v }))}
+        resolution={generarDialog.resolution}
+        employee={generarDialog.resolution ? employeeMap[generarDialog.resolution.employee_id] : null}
+      />
     </div>
   );
 }

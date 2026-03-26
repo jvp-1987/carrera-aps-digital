@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, FileText, FileUp, Pencil, Trash2 } from 'lucide-react';
+import { Plus, FileText, FileUp, Pencil, Trash2, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
 
 export default function ResolutionsTab({ employee }) {
   const queryClient = useQueryClient();
@@ -97,6 +98,118 @@ export default function ResolutionsTab({ employee }) {
     } else {
       createResolution.mutate(payload);
     }
+  };
+
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    try { return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' }); }
+    catch { return d; }
+  };
+
+  const generateResolucionPDF = (r) => {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pw = 210;
+    const ml = 20;
+    const mr = 20;
+    const cw = pw - ml - mr;
+    let y = 20;
+
+    const line = (text, fontSize = 10, style = 'normal', align = 'left', color = [30, 30, 30]) => {
+      doc.setFontSize(fontSize);
+      doc.setFont('helvetica', style);
+      doc.setTextColor(...color);
+      if (align === 'center') {
+        doc.text(text, pw / 2, y, { align: 'center' });
+      } else {
+        const lines = doc.splitTextToSize(text, cw);
+        doc.text(lines, ml, y);
+        y += (lines.length - 1) * (fontSize * 0.4);
+      }
+      y += fontSize * 0.45;
+    };
+
+    const skip = (mm = 4) => { y += mm; };
+    const hline = () => {
+      doc.setDrawColor(180, 180, 180);
+      doc.line(ml, y, pw - mr, y);
+      y += 4;
+    };
+
+    // Encabezado
+    line('MUNICIPALIDAD DE PANGUIPULLI', 13, 'bold', 'center', [30, 60, 140]);
+    line('DEPARTAMENTO DE SALUD MUNICIPAL', 10, 'normal', 'center', [80, 80, 80]);
+    line('APS PANGUIPULLI — DIRECCIÓN DE SALUD', 9, 'normal', 'center', [120, 120, 120]);
+    skip(2);
+    hline();
+
+    // Título resolución
+    skip(2);
+    line(`RESOLUCIÓN EXENTA N° ${r.resolution_number || '___'}`, 14, 'bold', 'center', [30, 60, 140]);
+    line(`Panguipulli, ${fmtDate(r.resolution_date)}`, 10, 'normal', 'center');
+    skip(4);
+    hline();
+
+    // Tipo
+    skip(2);
+    line('VISTOS:', 10, 'bold');
+    skip(1);
+
+    const vistos = {
+      'Cambio de Nivel': `Lo dispuesto en la Ley N° 19.378, Estatuto de Atención Primaria de Salud Municipal, y el Reglamento aprobado por Decreto Supremo N° 1.889 de 1995; los antecedentes de carrera funcionaria del/la funcionario/a ${employee.full_name} (RUT ${employee.rut}), quien cumple con los requisitos establecidos para el cambio de nivel en la Categoría ${employee.category};`,
+      'Reconocimiento de Bienio': `Lo dispuesto en el Art. 41 de la Ley N° 19.378 sobre reconocimiento de bienios de experiencia; los antecedentes de servicio del/la funcionario/a ${employee.full_name} (RUT ${employee.rut});`,
+      'Contrato': `Las facultades que la Ley N° 19.378 otorga al Alcalde; las necesidades de servicio del Departamento de Salud Municipal de Panguipulli;`,
+      'Desvinculación': `Las facultades que la Ley N° 19.378 otorga al Alcalde; los antecedentes del/la funcionario/a ${employee.full_name} (RUT ${employee.rut});`,
+    };
+    const texto = vistos[r.type] || `Los antecedentes del/la funcionario/a ${employee.full_name} (RUT ${employee.rut}) y la normativa vigente Ley N° 19.378;`;
+    line(texto, 10);
+    skip(4);
+
+    line('CONSIDERANDO:', 10, 'bold');
+    skip(1);
+    if (r.description) {
+      line(r.description, 10);
+    } else {
+      line(`Que el/la funcionario/a ${employee.full_name}, RUT ${employee.rut}, ${employee.position || 'funcionario/a'} de la Categoría ${employee.category}, Nivel ${employee.current_level}, cumple con los requisitos establecidos en la normativa vigente.`, 10);
+    }
+    skip(4);
+
+    line('RESUELVO:', 10, 'bold');
+    skip(1);
+
+    if (r.type === 'Cambio de Nivel') {
+      line(`ARTÍCULO 1°: Ascender, a contar de la fecha de la presente Resolución, al/a la funcionario/a ${employee.full_name}, RUT ${employee.rut}, del Nivel ${r.previous_level || employee.current_level} al Nivel ${r.new_level}, en la Categoría ${employee.category} del Estatuto de Atención Primaria de Salud Municipal (Ley N° 19.378).`, 10);
+      skip(3);
+      line(`ARTÍCULO 2°: El mayor gasto que irrogue la presente Resolución se imputará al ítem correspondiente del presupuesto vigente del Departamento de Salud Municipal de Panguipulli.`, 10);
+    } else if (r.type === 'Reconocimiento de Bienio') {
+      line(`ARTÍCULO 1°: Reconocer el bienio de experiencia al/a la funcionario/a ${employee.full_name}, RUT ${employee.rut}, Categoría ${employee.category}, Nivel ${employee.current_level}, según los antecedentes de servicio verificados.`, 10);
+    } else {
+      line(`ARTÍCULO 1°: ${r.description || `Adoptar las medidas correspondientes respecto del/la funcionario/a ${employee.full_name}, RUT ${employee.rut}, Categoría ${employee.category}, Nivel ${employee.current_level}.`}`, 10);
+    }
+
+    skip(4);
+    line(`ARTÍCULO FINAL°: Anótese, comuníquese y archívese.`, 10);
+    skip(10);
+    hline();
+
+    // Firmas
+    const sigY = y;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text('_______________________________', ml, sigY);
+    doc.text('_______________________________', pw / 2 + 5, sigY);
+    doc.text('DIRECTOR/A DE SALUD MUNICIPAL', ml, sigY + 5);
+    doc.text('ALCALDE/SA', pw / 2 + 5, sigY + 5);
+    doc.text('APS Panguipulli', ml, sigY + 9);
+    doc.text('Municipalidad de Panguipulli', pw / 2 + 5, sigY + 9);
+
+    // Pie de página
+    doc.setFontSize(7);
+    doc.setTextColor(160, 160, 160);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} — Sistema Carrera APS Digital`, pw / 2, 285, { align: 'center' });
+
+    doc.save(`Resolucion_${r.resolution_number || 'borrador'}_${employee.full_name?.replace(/ /g,'_')}.pdf`);
+    toast.success('PDF generado');
   };
 
   const typeColors = {
@@ -206,6 +319,9 @@ export default function ResolutionsTab({ employee }) {
                       PDF
                     </a>
                   )}
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-emerald-600 gap-1 text-xs" onClick={() => generateResolucionPDF(r)}>
+                    <FileDown className="w-3.5 h-3.5" /> Generar
+                  </Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(r)}>
                     <Pencil className="w-3.5 h-3.5" />
                   </Button>

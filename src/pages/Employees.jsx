@@ -12,6 +12,9 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export default function Employees() {
   const navigate = useNavigate();
@@ -76,6 +79,25 @@ export default function Employees() {
     });
     return groups;
   }, [filteredEmployees]);
+
+  const handleExportExcel = () => {
+    const rows = filteredEmployees.map(emp => ({
+      'Nombre': emp.full_name || '',
+      'RUT': emp.rut || '',
+      'Categoría': emp.category || '',
+      'Cargo': emp.position || '',
+      'Establecimiento': emp.department || '',
+      'Estado': emp.status || '',
+      'Tipo Contrato': emp.contract_type || '',
+      'Nivel Actual': emp.current_level || '',
+      'Puntaje Total': emp.total_points || '',
+      'Bienios': emp.bienios_count || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Funcionarios');
+    XLSX.writeFile(wb, `funcionarios_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
 
   // Handlers
   const handleDelete = async (emp) => {
@@ -163,7 +185,17 @@ export default function Employees() {
                 {filteredEmployees.length} de {employees.length} funcionarios
               </p>
             </div>
-            <label className="flex items-center gap-3 cursor-pointer">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Exportar Excel
+              </Button>
+              <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={hideInactive}
@@ -172,6 +204,7 @@ export default function Employees() {
               />
               <span className="text-sm text-slate-600 font-medium">Ocultar inactivos</span>
             </label>
+            </div>
           </div>
 
           {/* Table View */}

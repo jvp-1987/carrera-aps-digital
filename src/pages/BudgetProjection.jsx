@@ -5,17 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { TrendingUp, DollarSign, Users, AlertTriangle, FileText, Calendar } from 'lucide-react';
 import { checkPromotion, LEVEL_RANGES_AB, LEVEL_RANGES_CF } from '@/components/calculations';
-
-// ── Sueldos Base oficiales Ley 19.378 por Nivel (1-15) ──────
-// Fuente: Reglamento vigente. Nivel 1 = más alto.
-const SUELDOS_BASE = {
-  A: { 1:1180000,2:1143171,3:1106342,4:1069513,5:1032684,6:995855,7:959026,8:922197,9:885368,10:848539,11:811710,12:774881,13:738052,14:701223,15:664394 },
-  B: { 1:954000,2:926021,3:898042,4:870063,5:842084,6:814105,7:786126,8:758147,9:730168,10:702189,11:674210,12:646231,13:618252,14:590273,15:562294 },
-  C: { 1:510000,2:496304,3:482608,4:468912,5:455216,6:441520,7:427824,8:414128,9:400432,10:386736,11:373040,12:359344,13:345648,14:331952,15:318256 },
-  D: { 1:480000,2:467200,3:454400,4:441600,5:428800,6:416000,7:403200,8:390400,9:377600,10:364800,11:352000,12:339200,13:326400,14:313600,15:300800 },
-  E: { 1:450000,2:438000,3:426000,4:414000,5:402000,6:390000,7:378000,8:366000,9:354000,10:342000,11:330000,12:318000,13:306000,14:294000,15:282000 },
-  F: { 1:420000,2:409200,3:398400,4:387600,5:376800,6:366000,7:355200,8:344400,9:333600,10:322800,11:312000,12:301200,13:290400,14:279600,15:268800 },
-};
+import { getSueldoBase } from '@/components/profile/SalarialTab';
 
 const CATEGORY_LABELS = {
   A: 'A — Médicos/Dentistas',
@@ -40,7 +30,7 @@ function formatCLP(n) {
 }
 
 function getSueldo(category, level) {
-  return (SUELDOS_BASE[category]?.[level]) ?? 0;
+  return getSueldoBase(category, level) ?? 0;
 }
 
 export default function BudgetProjection() {

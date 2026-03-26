@@ -15,6 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 
+import EmployeeTableView from '@/components/employees/EmployeeTableView';
+import EmployeeGroupView from '@/components/employees/EmployeeGroupView';
+
 export default function Employees() {
   const navigate = useNavigate();
   const { data: employees = [], isLoading, isError, error } = useEmployees();
@@ -213,92 +216,12 @@ export default function Employees() {
 
           {/* Table View */}
           {viewMode === 'table' && (
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">Funcionario</th>
-                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">RUT</th>
-                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">Categoría</th>
-                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">Estado</th>
-                      <th className="text-left px-6 py-4 font-semibold text-slate-900 text-sm">Establecimiento</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredEmployees.map((emp, idx) => (
-                      <motion.tr
-                        key={emp.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: idx * 0.02 }}
-                        className="border-b border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/EmployeeProfile?id=${emp.id}`)}
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback>{emp.full_name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium text-slate-900">{emp.full_name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-slate-600 font-mono text-sm">{emp.rut}</td>
-                        <td className="px-6 py-4">
-                          <Badge className={categoryColors[emp.category]}>
-                            {emp.category} — {categoryLabels[emp.category]}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant={emp.status === 'Activo' ? 'default' : 'secondary'}>
-                            {emp.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-slate-600 text-sm">{emp.department}</td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <EmployeeTableView employees={filteredEmployees} />
           )}
 
           {/* Group View */}
           {viewMode === 'group' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.entries(groupedByCategory).map(([cat, emps]) => (
-                <motion.div
-                  key={cat}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Card className="border-none shadow-lg hover:shadow-xl transition-shadow">
-                    <CardHeader className={`${categoryColors[cat]} rounded-t-xl`}>
-                      <CardTitle className="text-lg">
-                        {cat} — {categoryLabels[cat]}
-                      </CardTitle>
-                      <p className="text-sm opacity-75 mt-1">{emps.length} funcionarios</p>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        {emps.map(emp => (
-                          <div key={emp.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => navigate(`/EmployeeProfile?id=${emp.id}`)}>
-                            <Avatar className="w-6 h-6 shrink-0">
-                              <AvatarFallback className="text-xs">{emp.full_name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 truncate">{emp.full_name}</p>
-                              <p className="text-xs text-slate-500">{emp.rut}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
+            <EmployeeGroupView employees={filteredEmployees} />
           )}
 
           {filteredEmployees.length === 0 && (

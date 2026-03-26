@@ -51,6 +51,8 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
           total_points: totalPts,
         });
         ok++;
+        // Throttle para evitar rate limit
+        await new Promise(r => setTimeout(r, 200));
       } catch (err) {
         console.error(`Error updating employee ${emp.id}:`, err);
         errors++;

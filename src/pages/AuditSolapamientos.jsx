@@ -119,6 +119,7 @@ export default function AuditSolapamientos() {
     for (const d of duplicates) {
       await base44.entities.ServicePeriod.delete(d.duplicate.id);
       count++;
+      // Throttle para evitar rate limit (429)
       await sleep(300);
     }
     toast.success(`${count} duplicado(s) eliminados`);
@@ -142,6 +143,7 @@ export default function AuditSolapamientos() {
           solapamiento_detalle: `Ajustado masivamente a 0 días por solapamiento con ${ov.a.start_date}→${ov.a.end_date}`,
         });
         count++;
+        // Throttle para evitar rate limit (429)
         await sleep(300);
       }
     }

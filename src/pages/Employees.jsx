@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useEmployees } from '@/hooks/useEmployees';
 import { logger } from '@/lib/logger';
@@ -13,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
 export default function Employees() {
+  const navigate = useNavigate();
   const { data: employees = [], isLoading, isError, error } = useEmployees();
   
   const [search, setSearch] = useState('');
@@ -193,7 +195,8 @@ export default function Employees() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: idx * 0.02 }}
-                        className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
+                        className="border-b border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/EmployeeProfile?id=${emp.id}`)}
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -243,7 +246,7 @@ export default function Employees() {
                     <CardContent className="p-4">
                       <div className="space-y-2">
                         {emps.map(emp => (
-                          <div key={emp.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg">
+                          <div key={emp.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => navigate(`/EmployeeProfile?id=${emp.id}`)}>
                             <Avatar className="w-6 h-6 shrink-0">
                               <AvatarFallback className="text-xs">{emp.full_name?.charAt(0)}</AvatarFallback>
                             </Avatar>

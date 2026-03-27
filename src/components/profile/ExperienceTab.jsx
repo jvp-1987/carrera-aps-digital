@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Building2, Pencil, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, formatDaysToYMD } from '@/components/calculations';
+import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, formatDaysToYMD, parseNumeric, calculateCurrentLevel } from '@/components/calculations';
 
 // Detecta si dos periodos se solapan
 function periodsOverlap(startA, endA, startB, endB) {
@@ -118,18 +118,23 @@ export default function ExperienceTab({ employee }) {
   const recalculate = async () => {
     const allPeriods = await base44.entities.ServicePeriod.filter({ employee_id: employee.id });
     const allLeaves = await base44.entities.LeaveWithoutPay.filter({ employee_id: employee.id });
-    const tLeave = allLeaves.reduce((s, l) => s + (l.days_count || 0), 0);
+    const tLeave = allLeaves.reduce((s, l) => s + (parseNumeric(l.days_count) || 0), 0);
     const eDays = calculateEffectiveDays(allPeriods, tLeave);
     const b = calculateBienios(eDays);
     const bp = calculateBienioPoints(employee.category, b);
     const nbd = calculateNextBienioDate(allPeriods, tLeave, b);
+
+    const finalTotal = Math.round((bp + (employee.training_points || 0)) * 100) / 100;
+    const currentLvl = calculateCurrentLevel(finalTotal, employee.category);
+
     await base44.entities.Employee.update(employee.id, {
       total_experience_days: eDays,
       total_leave_days: tLeave,
       bienios_count: b,
       bienio_points: bp,
       next_bienio_date: nbd,
-      total_points: bp + (employee.training_points || 0),
+      total_points: finalTotal,
+      current_level: currentLvl,
     });
     queryClient.invalidateQueries({ queryKey: ['employee', employee.id] });
   };

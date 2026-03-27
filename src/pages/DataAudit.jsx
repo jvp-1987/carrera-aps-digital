@@ -32,7 +32,7 @@ const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
 };
 
 function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves }) {
-  const { isRunning, progress, stats, startAudit } = useAudit();
+  const { isRunning, progress, stats, currentStatus, startAudit } = useAudit();
   
   const handleRecalculate = async () => {
     if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios? Esto puede tomar varios minutos. Podrás seguir navegando por la aplicación mientras se procesa.')) return;
@@ -53,8 +53,13 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
         </div>
         <div className="flex flex-col items-end gap-2 text-sm text-indigo-800 font-medium whitespace-nowrap w-full md:w-auto">
           {isRunning ? (
-            <div className="flex items-center gap-2 bg-indigo-100 px-4 py-2 rounded-md border border-indigo-200 w-full md:w-auto justify-center">
-              <Loader2 className="w-4 h-4 animate-spin text-indigo-600"/> Procesando... {progress}%
+            <div className="flex flex-col items-end gap-1 w-full md:w-auto">
+              <div className="flex items-center gap-2 bg-indigo-100 px-4 py-2 rounded-md border border-indigo-200 w-full justify-center">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600"/> {progress}%
+              </div>
+              <p className="text-[10px] text-indigo-600 font-normal italic animate-pulse">
+                {currentStatus || 'Preparando...'}
+              </p>
             </div>
           ) : (
             <>

@@ -187,11 +187,50 @@ export default function TrainingTab({ employee }) {
 
   return (
     <div className="space-y-6">
+      {/* Alerta de Desincronización */}
+      {needsSync && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-pulse-subtle">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-100 p-2 rounded-full">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-amber-900">Desfase de puntaje detectado</p>
+              <p className="text-xs text-amber-700">
+                La suma de cursos ({totalTrainingPoints.toFixed(1)}) no coincide con el registro del funcionario ({(employee.training_points || 0).toFixed(1)}).
+              </p>
+            </div>
+          </div>
+          <Button 
+            size="sm" 
+            onClick={() => syncScores.mutate()} 
+            disabled={syncScores.isPending}
+            className="bg-amber-600 hover:bg-amber-700 text-white font-bold w-full sm:w-auto"
+          >
+            {syncScores.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Sincronizar Ahora'}
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-slate-400 mb-1">Pts. Capacitación</p>
-            <p className="text-2xl font-bold text-indigo-600">{totalTrainingPoints.toFixed(1)}</p>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Pts. Capacitación</p>
+                <p className="text-2xl font-bold text-indigo-600">{totalTrainingPoints.toFixed(1)}</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50"
+                onClick={() => syncScores.mutate()}
+                title="Sincronizar puntaje"
+                disabled={syncScores.isPending}
+              >
+                <RefreshCw className={`w-4 h-4 ${syncScores.isPending ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </CardContent>
         </Card>
         <Card>

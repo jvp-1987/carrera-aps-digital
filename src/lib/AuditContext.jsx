@@ -79,10 +79,7 @@ export function AuditProvider({ children }) {
 
           const validated = empTrainings.filter(t => t.status === 'Validado');
           const tPts = validated.reduce((s, t) => {
-            let pts = parseFloat(t.calculated_points) || 0;
-            if (pts === 0 && t.hours > 0 && t.grade > 0) {
-              pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
-            }
+            const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
             return s + pts;
           }, 0);
           const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (parseFloat(t.postitle_hours) || 0), 0);

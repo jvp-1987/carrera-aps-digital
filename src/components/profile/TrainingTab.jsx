@@ -33,10 +33,7 @@ export default function TrainingTab({ employee }) {
 
   const validatedTrainings = trainings.filter(t => t.status === 'Validado');
   const rawTrainingPoints = validatedTrainings.reduce((s, t) => {
-    let pts = t.calculated_points || 0;
-    if (pts === 0 && t.hours > 0 && t.grade > 0) {
-      pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
-    }
+    const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
     return s + pts;
   }, 0);
   const totalTrainingPoints = Math.round(rawTrainingPoints * 100) / 100;
@@ -125,10 +122,7 @@ export default function TrainingTab({ employee }) {
       ]);
       const validated = allTrainings.filter(t => t.status === 'Validado');
       const rawPts = validated.reduce((s, t) => {
-        let pts = t.calculated_points || 0;
-        if (pts === 0 && t.hours > 0 && t.grade > 0) {
-          pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
-        }
+        const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
         return s + pts;
       }, 0);
       const totalPts = Math.round(rawPts * 100) / 100;

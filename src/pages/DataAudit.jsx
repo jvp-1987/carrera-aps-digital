@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle2, Loader, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, calculatePostitlePercentage, calculateTrainingPoints } from '@/components/calculations';
+import { useAudit } from '@/lib/AuditContext';
 
 // Helper: Exponential Backoff para mitigar errores 429
 const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
@@ -31,65 +32,11 @@ const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
 };
 
 function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves }) {
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [stats, setStats] = useState(null);
+  const { isRunning, progress, stats, startAudit } = useAudit();
   
   const handleRecalculate = async () => {
-    if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios? Esto puede tomar varios minutos.')) return;
-    
-    setRunning(true);
-    setStats(null);
-    let ok = 0, errors = 0;
-    
-    for (let i = 0; i < employees.length; i++) {
-      const emp = employees[i];
-      try {
-        const empPeriods = servicePeriods.filter(p => p.employee_id === emp.id);
-        const empLeaves = leaves.filter(l => l.employee_id === emp.id);
-        const empTrainings = trainings.filter(t => t.employee_id === emp.id);
-
-        const tLeave = empLeaves.reduce((s, l) => s + parseInt(l.days_count || 0), 0);
-        const eDays = calculateEffectiveDays(empPeriods, tLeave);
-        const b = calculateBienios(eDays);
-        const bp = calculateBienioPoints(emp.category, b);
-        const nbd = calculateNextBienioDate(empPeriods, tLeave, b);
-
-        const validated = empTrainings.filter(t => t.status === 'Validado');
-        const tPts = validated.reduce((s, t) => {
-          let pts = parseFloat(t.calculated_points) || 0;
-          if (pts === 0 && t.hours > 0 && t.grade > 0) {
-            pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
-          }
-          return s + pts;
-        }, 0);
-        const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (parseFloat(t.postitle_hours) || 0), 0);
-        const pPct = calculatePostitlePercentage(emp.category, pHours);
-
-        const totalPts = Math.round((bp + tPts) * 100) / 100;
-
-        await safeApiCall(() => base44.entities.Employee.update(emp.id, {
-          total_experience_days: eDays,
-          total_leave_days: tLeave,
-          bienios_count: b,
-          bienio_points: bp,
-          next_bienio_date: nbd,
-          training_points: tPts,
-          postitle_percentage: pPct,
-          total_points: totalPts,
-        }), 6, 400);
-
-        ok++;
-      } catch (err) {
-        console.error(`Error updating employee ${emp.id}:`, err);
-        errors++;
-      }
-      setProgress(Math.round(((i + 1) / employees.length) * 100));
-    }
-    
-    setRunning(false);
-    setStats({ ok, errors });
-    toast.success(`Recálculo masivo terminado. Actualizados: ${ok}, Errores: ${errors}`);
+    if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios? Esto puede tomar varios minutos. Podrás seguir navegando por la aplicación mientras se procesa.')) return;
+    startAudit(employees, servicePeriods, trainings, leaves);
   };
 
   return (
@@ -105,7 +52,7 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
           </p>
         </div>
         <div className="flex flex-col items-end gap-2 text-sm text-indigo-800 font-medium whitespace-nowrap w-full md:w-auto">
-          {running ? (
+          {isRunning ? (
             <div className="flex items-center gap-2 bg-indigo-100 px-4 py-2 rounded-md border border-indigo-200 w-full md:w-auto justify-center">
               <Loader2 className="w-4 h-4 animate-spin text-indigo-600"/> Procesando... {progress}%
             </div>

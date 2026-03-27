@@ -8,6 +8,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import NotificationBell from '@/components/NotificationBell';
 import ImportProgressBanner from '@/components/ImportProgressBanner';
+import AuditProgressBanner from '@/components/AuditProgressBanner';
 
 const navItems = [
   { path: '/Dashboard', label: 'Panel', icon: LayoutDashboard },
@@ -87,6 +88,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <ImportProgressBanner />
+      <AuditProgressBanner />
     </div>
   );
 }

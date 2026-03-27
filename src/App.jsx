@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ImportProvider } from '@/lib/ImportContext';
+import { AuditProvider } from '@/lib/AuditContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import Layout from '@/components/Layout';
@@ -72,10 +73,12 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <ImportProvider>
-          <Router>
-            <AuthenticatedApp />
-            <Toaster richColors position="top-right" />
-          </Router>
+          <AuditProvider>
+            <Router>
+              <AuthenticatedApp />
+              <Toaster richColors position="top-right" />
+            </Router>
+          </AuditProvider>
         </ImportProvider>
       </QueryClientProvider>
     </AuthProvider>

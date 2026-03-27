@@ -109,7 +109,7 @@ export default function ExperienceTab({ employee }) {
       period_type: p.period_type || '', start_date: p.start_date || '',
       end_date: p.end_date || '', institution: p.institution || '',
       resolution_number: p.resolution_number || '', days_count: p.days_count || 0,
-      jornada: p.jornada || 'Completa',
+      jornada: p.jornada || '44',
     });
     setOverlapInfo(null);
     setOverlapDismissed(false);
@@ -177,6 +177,15 @@ export default function ExperienceTab({ employee }) {
   };
 
   const handleSubmit = () => {
+    // Validación de Jornada para Categorías E y F (mínimo 22 hrs)
+    if (employee.category === 'E' || employee.category === 'F') {
+      const hrs = parseInt(form.jornada);
+      if (isNaN(hrs) || hrs < 22) {
+        toast.error(`Error: Las categorías E y F no pueden tener una jornada menor a 22 horas.`);
+        return;
+      }
+    }
+
     const originalStartDate = form.start_date;
     const wasAdjusted = overlapDismissed; // se ajustó automáticamente
     const start = new Date(form.start_date);
@@ -340,16 +349,31 @@ export default function ExperienceTab({ employee }) {
                 )}
 
                 <div>
-                  <Label>Jornada Laboral</Label>
-                  <Select value={form.jornada} onValueChange={v => setForm(p => ({ ...p, jornada: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar jornada" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Completa">Jornada Completa</SelectItem>
-                      <SelectItem value="Media Jornada">Media Jornada</SelectItem>
-                      <SelectItem value="3/4 Jornada">3/4 Jornada</SelectItem>
-                      <SelectItem value="Parcial">Jornada Parcial</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Jornada Laboral (Horas)</Label>
+                  <div className="flex gap-2">
+                    <Select value={['44', '33', '22', '11'].includes(form.jornada) ? form.jornada : 'Otra'} onValueChange={v => setForm(p => ({ ...p, jornada: v === 'Otra' ? '' : v }))}>
+                      <SelectTrigger className="flex-1"><SelectValue placeholder="Seleccionar horas" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="44">44 Horas</SelectItem>
+                        <SelectItem value="33">33 Horas</SelectItem>
+                        <SelectItem value="22">22 Horas</SelectItem>
+                        <SelectItem value="11">11 Horas</SelectItem>
+                        <SelectItem value="Otra">Otra (completar manual)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!['44', '33', '22', '11'].includes(form.jornada) && (
+                      <Input
+                        className="w-24"
+                        placeholder="Horas..."
+                        type="number"
+                        value={form.jornada}
+                        onChange={e => setForm(p => ({ ...p, jornada: e.target.value }))}
+                      />
+                    )}
+                  </div>
+                  {(employee.category === 'E' || employee.category === 'F') && (
+                    <p className="text-[10px] text-red-500 mt-1 uppercase font-bold">Mínimo legal para Cat. {employee.category}: 22 hrs</p>
+                  )}
                 </div>
                 <div>
                   <Label>Institución</Label>
@@ -393,8 +417,8 @@ export default function ExperienceTab({ employee }) {
                     <div>
                       <p className="text-sm font-medium">{p.institution || 'APS Panguipulli'}</p>
                       <p className="text-xs text-slate-500">{p.start_date} → {p.end_date || 'Vigente'}</p>
-                      {p.jornada && p.jornada !== 'Completa' && (
-                        <p className="text-xs text-indigo-600 mt-0.5">⏱ {p.jornada}</p>
+                      {p.jornada && p.jornada !== '44' && (
+                        <p className="text-xs text-indigo-600 mt-0.5 font-bold">⏱ {p.jornada} hrs</p>
                       )}
                       {p.ajustado_por_solapamiento && (
                         <p className="text-xs text-amber-600 mt-0.5">

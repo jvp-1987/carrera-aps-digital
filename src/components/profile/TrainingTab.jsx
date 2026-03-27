@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, GraduationCap, FileUp, Lock, AlertCircle, Pencil, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR, getMaxTrainingPoints } from '@/components/calculations';
+import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR, getMaxTrainingPoints, parseNumeric } from '@/components/calculations';
 
 export default function TrainingTab({ employee }) {
   const queryClient = useQueryClient();
@@ -33,7 +33,7 @@ export default function TrainingTab({ employee }) {
 
   const validatedTrainings = trainings.filter(t => t.status === 'Validado');
   const rawSum = validatedTrainings.reduce((s, t) => {
-    const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
+    const pts = calculateTrainingPoints(t.hours, t.grade, t.technical_level);
     return s + pts;
   }, 0);
   
@@ -163,14 +163,14 @@ export default function TrainingTab({ employee }) {
       toast.error('Completa los campos obligatorios: nombre, horas, nota y nivel técnico');
       return;
     }
-    const pts = calculateTrainingPoints(parseFloat(form.hours), parseFloat(form.grade), form.technical_level);
+    const pts = calculateTrainingPoints(form.hours, form.grade, form.technical_level);
     const payload = {
       ...form,
       employee_id: employee.id,
-      hours: parseFloat(form.hours),
-      grade: parseFloat(form.grade),
+      hours: parseNumeric(form.hours),
+      grade: parseNumeric(form.grade),
       calculated_points: pts,
-      postitle_hours: form.is_postitle ? parseFloat(form.postitle_hours || 0) : 0,
+      postitle_hours: form.is_postitle ? parseNumeric(form.postitle_hours || 0) : 0,
     };
     if (editingId) {
       updateTraining.mutate({ id: editingId, data: payload });
@@ -348,7 +348,7 @@ export default function TrainingTab({ employee }) {
                       Nivel: ×{TECHNICAL_LEVEL_FACTOR[form.technical_level] || 1.0}
                     </p>
                     <p className="font-bold text-indigo-700 text-base">
-                      = {calculateTrainingPoints(parseFloat(form.hours), parseFloat(form.grade), form.technical_level)} puntos
+                      = {calculateTrainingPoints(form.hours, form.grade, form.technical_level)} puntos
                     </p>
                   </div>
                 )}
@@ -365,39 +365,79 @@ export default function TrainingTab({ employee }) {
             <p className="text-sm text-slate-400 text-center py-6">Sin capacitaciones registradas</p>
           ) : (
             <div className="space-y-3">
-              {trainings.map(t => (
-                <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-indigo-100">
-                      <GraduationCap className="w-4 h-4 text-indigo-600" />
+              {trainings.map(t => {
+                const coursePts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
+                const dFact = getDurationFactor(parseFloat(t.hours || 0));
+                const gFact = getGradeFactor(parseFloat(t.grade || 0));
+                const lFact = TECHNICAL_LEVEL_FACTOR[t.technical_level] || 1.0;
+
+                return (
+                  <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-white border border-slate-100 shadow-sm gap-4 hover:border-indigo-200 transition-all">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
+                        <GraduationCap className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-slate-900 leading-tight">{t.course_name}</p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            {t.institution || 'Sin Institución'}
+                          </p>
+                          <span className="text-slate-300">•</span>
+                          <p className="text-[11px] text-slate-500">
+                            {t.hours}h ({dFact} pts)
+                          </p>
+                          <span className="text-slate-300">•</span>
+                          <p className="text-[11px] text-slate-500">
+                            Nota {t.grade} (×{gFact})
+                          </p>
+                          <span className="text-slate-300">•</span>
+                          <p className="text-[11px] text-slate-500">
+                            Nivel {t.technical_level} (×{lFact})
+                          </p>
+                        </div>
+                        {t.is_postitle && (
+                          <Badge variant="outline" className="text-[10px] bg-violet-50 text-violet-700 border-violet-100 px-1.5 h-4">
+                            Postítulo
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{t.course_name}</p>
-                      <p className="text-xs text-slate-500">{t.hours}h — Nota {t.grade} — {t.technical_level}</p>
+
+                    <div className="flex items-center gap-2 justify-end">
+                      <div className="flex flex-col items-end mr-2">
+                        <Badge className={`${statusColors[t.status]} px-2 py-0.5 text-[10px] mb-1 font-semibold`}>
+                          {t.status}
+                        </Badge>
+                        <p className="text-sm font-black text-indigo-700">
+                          {coursePts.toFixed(1)} pts
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1 border-l pl-2 border-slate-100">
+                        {t.status === 'Pendiente' && t.certificate_url && (
+                          <Button size="sm" variant="outline" className="h-8 text-xs font-bold text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => validateTraining.mutate(t)}>
+                            Validar
+                          </Button>
+                        )}
+                        {t.certificate_url && (
+                          <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-indigo-600">
+                            <a href={t.certificate_url} target="_blank" rel="noopener noreferrer">
+                              <FileUp className="w-4 h-4" />
+                            </a>
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(t)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={() => { if (confirm('¿Eliminar esta capacitación?')) deleteTraining.mutate(t.id); }}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={statusColors[t.status]}>{t.status}</Badge>
-                    <Badge variant="outline">{t.calculated_points?.toFixed(1)} pts</Badge>
-                    {t.status === 'Pendiente' && t.certificate_url && (
-                      <Button size="sm" variant="outline" className="text-xs" onClick={() => validateTraining.mutate(t)}>
-                        Validar
-                      </Button>
-                    )}
-                    {t.certificate_url && (
-                      <a href={t.certificate_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 text-xs hover:underline">
-                        PDF
-                      </a>
-                    )}
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600" onClick={() => openEdit(t)}>
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-500" onClick={() => { if (confirm('¿Eliminar esta capacitación?')) deleteTraining.mutate(t.id); }}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

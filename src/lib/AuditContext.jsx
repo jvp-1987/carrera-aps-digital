@@ -8,7 +8,8 @@ import {
   calculateNextBienioDate, 
   calculatePostitlePercentage, 
   calculateTrainingPoints,
-  getMaxTrainingPoints 
+  getMaxTrainingPoints,
+  parseNumeric
 } from '@/components/calculations';
 
 const AuditContext = createContext(null);
@@ -104,7 +105,7 @@ export function AuditProvider({ children }) {
             const empLeaves = leaveMap[emp.id] || [];
             const empTrainings = trainingMap[emp.id] || [];
             
-            const tLeave = empLeaves.reduce((s, l) => s + (parseInt(l.days_count) || 0), 0);
+            const tLeave = empLeaves.reduce((s, l) => s + (parseNumeric(l.days_count) || 0), 0);
             const eDays = calculateEffectiveDays(empPeriods, tLeave);
             const b = calculateBienios(eDays);
             const bp = calculateBienioPoints(emp.category, b);
@@ -112,10 +113,10 @@ export function AuditProvider({ children }) {
 
             const validated = empTrainings.filter(t => t.status === 'Validado');
             const rawSum = validated.reduce((s, t) => {
-              const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
+              const pts = calculateTrainingPoints(t.hours, t.grade, t.technical_level);
               return s + pts;
             }, 0);
-            const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (parseFloat(t.postitle_hours) || 0), 0);
+            const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (parseNumeric(t.postitle_hours) || 0), 0);
             const pPct = calculatePostitlePercentage(emp.category, pHours);
             
             const maxPossible = getMaxTrainingPoints(emp.category, eDays);

@@ -2,6 +2,14 @@
 // Motor de Cálculo - Carrera Funcionaria Ley 19.378
 // ============================================================
 
+export function parseNumeric(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return val;
+  // Reemplaza coma por punto para manejar formatos locales (ej: "6,5" -> "6.5")
+  const cleaned = val.toString().replace(',', '.');
+  return parseFloat(cleaned) || 0;
+}
+
 // ── BIENIOS ─────────────────────────────────────────────────
 // Puntaje ACUMULADO por número de bienio según categoría
 // Categoría A: 1°=1800, 2°-3°=504/bienio, ..., 11°-15°=216/bienio
@@ -114,8 +122,10 @@ export const TECHNICAL_LEVEL_FACTOR = {
 
 // Puntaje final = Factor Duración × Factor Aprobación × Factor Nivel Técnico
 export function calculateTrainingPoints(hours, grade, technicalLevel) {
-  const durationFactor = getDurationFactor(hours);
-  const gradeFactor = getGradeFactor(grade);
+  const h = parseNumeric(hours);
+  const g = parseNumeric(grade);
+  const durationFactor = getDurationFactor(h);
+  const gradeFactor = getGradeFactor(g);
   const levelFactor = TECHNICAL_LEVEL_FACTOR[technicalLevel] || 1.0;
   return Math.round(durationFactor * gradeFactor * levelFactor * 100) / 100;
 }

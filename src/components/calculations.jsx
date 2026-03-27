@@ -206,6 +206,17 @@ function getLevelRanges(category) {
   return (category === 'A' || category === 'B') ? LEVEL_RANGES_AB : LEVEL_RANGES_CF;
 }
 
+export function calculateCurrentLevel(totalPoints, category) {
+  const ranges = getLevelRanges(category);
+  // Buscamos de Nivel 1 a 15, el primer rango cuyo 'min' sea menor o igual al puntaje
+  for (let lvl = 1; lvl <= 15; lvl++) {
+    if (totalPoints >= (ranges[lvl]?.min || 0)) {
+      return lvl;
+    }
+  }
+  return 15;
+}
+
 export function checkPromotion(currentLevel, totalPoints, category = 'C') {
   if (currentLevel <= 1) return { eligible: false };
   const ranges = getLevelRanges(category);

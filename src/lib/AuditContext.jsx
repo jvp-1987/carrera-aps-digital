@@ -9,7 +9,8 @@ import {
   calculatePostitlePercentage, 
   calculateTrainingPoints,
   getMaxTrainingPoints,
-  parseNumeric
+  parseNumeric,
+  calculateCurrentLevel
 } from '@/components/calculations';
 
 const AuditContext = createContext(null);
@@ -122,6 +123,7 @@ export function AuditProvider({ children }) {
             const maxPossible = getMaxTrainingPoints(emp.category, eDays);
             const finalTrainingPts = Math.min(maxPossible, Math.round(rawSum * 100) / 100);
             const totalPts = Math.round((bp + finalTrainingPts) * 100) / 100;
+            const currentLvl = calculateCurrentLevel(totalPts, emp.category);
 
             await safeApiCall(() => base44.entities.Employee.update(emp.id, {
               total_experience_days: eDays,
@@ -132,6 +134,7 @@ export function AuditProvider({ children }) {
               training_points: finalTrainingPts,
               postitle_percentage: pPct,
               total_points: totalPts,
+              current_level: currentLvl,
             }), 6, 200);
 
             ok++;

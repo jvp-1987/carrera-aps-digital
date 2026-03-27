@@ -31,12 +31,12 @@ const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
   }
 };
 
-function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves }) {
+function RecalcularPuntajesMasivo() {
   const { isRunning, progress, stats, currentStatus, startAudit } = useAudit();
   
   const handleRecalculate = async () => {
-    if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios? Esto puede tomar varios minutos. Podrás seguir navegando por la aplicación mientras se procesa.')) return;
-    startAudit(employees);
+    if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios (activos e inactivos)? Esto puede tomar varios minutos. Podrás seguir navegando por la aplicación mientras se procesa.')) return;
+    startAudit();
   };
 
   return (
@@ -48,7 +48,7 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
           </h3>
           <p className="text-sm text-indigo-700 mt-1 max-w-xl">
             Esta herramienta recalcula y actualiza los días efectivos, bienios contables, puntos de experiencia y puntos 
-            de capacitación de los {employees.length} funcionarios basándose en la última data registrada.
+            de capacitación de todos los funcionarios (incluyendo inactivos) basándose en la última data registrada.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2 text-sm text-indigo-800 font-medium whitespace-nowrap w-full md:w-auto">
@@ -64,7 +64,7 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
           ) : (
             <>
               <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 w-full md:w-auto text-sm" onClick={handleRecalculate}>
-                Iniciar Recálculo ({employees.length})
+                Iniciar Recálculo {stats?.total ? `(${stats.total})` : ''}
               </Button>
               {stats && (
                 <p className="text-xs text-indigo-600/80">
@@ -137,7 +137,7 @@ export default function DataAudit() {
         <p className="text-sm text-slate-500 mt-1">Funcionarios sin información de experiencia o capacitación</p>
       </div>
 
-      <RecalcularPuntajesMasivo employees={employees} servicePeriods={servicePeriods} trainings={trainings} leaves={leaves} />
+      <RecalcularPuntajesMasivo />
 
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

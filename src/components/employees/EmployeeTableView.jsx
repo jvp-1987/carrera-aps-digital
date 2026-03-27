@@ -49,10 +49,12 @@ export default function EmployeeTableView({ employees }) {
           {employees.map((emp, index) => (
             <motion.tr 
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ opacity: emp.status === 'Inactivo' ? 0.6 : 1, y: 0 }}
               transition={{ delay: Math.min(index * 0.02, 0.2) }}
               key={emp.id} 
-              className="group hover:bg-slate-50/80 transition-all duration-300 hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] hover:-translate-y-[1px] relative z-0 hover:z-10 bg-white"
+              className={`group hover:bg-slate-50/80 transition-all duration-300 hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] hover:-translate-y-[1px] relative z-0 hover:z-10 bg-white ${
+                emp.status === 'Inactivo' ? 'grayscale-[0.4]' : ''
+              }`}
             >
               {/* Funcionario */}
               <td className="px-3 py-3">

@@ -27,7 +27,7 @@ export default function Employees() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewMode, setViewMode] = useState('table');
-  const [hideInactive, setHideInactive] = useState(true);
+  const [hideInactive, setHideInactive] = useState(false);
 
   // Logging
   logger.info(`Employees page loaded with ${employees.length} employees`);

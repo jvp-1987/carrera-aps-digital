@@ -57,7 +57,7 @@ export function AuditProvider({ children }) {
 
   const [currentStatus, setCurrentStatus] = useState('');
 
-  const startAudit = useCallback(async (employees) => {
+  const startAudit = useCallback(async () => {
     if (isRunning) return;
     
     setIsRunning(true);
@@ -70,6 +70,9 @@ export function AuditProvider({ children }) {
     (async () => {
       try {
         // Precarga masiva eficiente con fetchAll (maneja paginación de 5000)
+        setCurrentStatus('Descargando lista de funcionarios...');
+        const allEmployees = await fetchAll(base44.entities.Employee);
+
         setCurrentStatus('Descargando periodos de servicio...');
         const allPeriods = await fetchAll(base44.entities.ServicePeriod);
         
@@ -98,10 +101,11 @@ export function AuditProvider({ children }) {
 
         setCurrentStatus('Iniciando recálculo...');
 
-        for (let i = 0; i < employees.length; i++) {
-          const emp = employees[i];
-          setCurrentStatus(`Procesando: ${emp.full_name}`);
+        const total = allEmployees.length;
+        for (let i = 0; i < total; i++) {
+          const emp = allEmployees[i];
           try {
+            setCurrentStatus(`Auditando: ${emp.full_name || emp.id} (${i + 1}/${total})`);
             const empPeriods = periodMap[emp.id] || [];
             const empLeaves = leaveMap[emp.id] || [];
             const empTrainings = trainingMap[emp.id] || [];
@@ -142,10 +146,10 @@ export function AuditProvider({ children }) {
             console.error(`Audit error for ${emp.id}:`, err);
             errors++;
           }
-          setProgress(Math.round(((i + 1) / employees.length) * 100));
+          setProgress(Math.round(((i + 1) / total) * 100));
         }
         setIsRunning(false);
-        setStats({ ok, errors });
+        setStats({ ok, errors, total });
         setCurrentStatus('');
         toast.success(`Auditoría terminada. ${ok} actualizados, ${errors} errores.`);
       } catch (globalErr) {

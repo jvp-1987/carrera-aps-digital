@@ -84,7 +84,12 @@ function GroupSection({ groupKey, employees, defaultOpen = true }) {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {employees.map(emp => (
-                    <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <tr 
+                      key={emp.id} 
+                      className={`hover:bg-slate-50/80 transition-colors group ${
+                        emp.status === 'Inactivo' ? 'opacity-60 grayscale-[0.4]' : ''
+                      }`}
+                    >
                       
                       {/* Funcionario */}
                       <td className="px-5 py-3.5 whitespace-nowrap">

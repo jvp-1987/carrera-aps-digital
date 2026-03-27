@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle2, Loader, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, calculatePostitlePercentage } from '@/components/calculations';
+import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, calculatePostitlePercentage, calculateTrainingPoints } from '@/components/calculations';
 
 // Helper: Exponential Backoff para mitigar errores 429
 const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
@@ -56,7 +56,13 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
         const nbd = calculateNextBienioDate(empPeriods, tLeave, b);
 
         const validated = empTrainings.filter(t => t.status === 'Validado');
-        const tPts = validated.reduce((s, t) => s + (parseFloat(t.calculated_points) || 0), 0);
+        const tPts = validated.reduce((s, t) => {
+          let pts = parseFloat(t.calculated_points) || 0;
+          if (pts === 0 && t.hours > 0 && t.grade > 0) {
+            pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
+          }
+          return s + pts;
+        }, 0);
         const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (parseFloat(t.postitle_hours) || 0), 0);
         const pPct = calculatePostitlePercentage(emp.category, pHours);
 

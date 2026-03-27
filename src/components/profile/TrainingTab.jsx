@@ -32,7 +32,13 @@ export default function TrainingTab({ employee }) {
   });
 
   const validatedTrainings = trainings.filter(t => t.status === 'Validado');
-  const rawTrainingPoints = validatedTrainings.reduce((s, t) => s + (t.calculated_points || 0), 0);
+  const rawTrainingPoints = validatedTrainings.reduce((s, t) => {
+    let pts = t.calculated_points || 0;
+    if (pts === 0 && t.hours > 0 && t.grade > 0) {
+      pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
+    }
+    return s + pts;
+  }, 0);
   const totalTrainingPoints = Math.round(rawTrainingPoints * 100) / 100;
   const postitleHours = validatedTrainings.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
   const postitlePct = calculatePostitlePercentage(employee.category, postitleHours);
@@ -81,17 +87,26 @@ export default function TrainingTab({ employee }) {
   const validateTraining = useMutation({
     mutationFn: async (training) => {
       await base44.entities.Training.update(training.id, { status: 'Validado' });
-      // Recalcular puntos del empleado
-      const allTrainings = await base44.entities.Training.filter({ employee_id: employee.id });
+      // Recalcular puntos del empleado con data fresca
+      const [allTrainings, freshEmployee] = await Promise.all([
+        base44.entities.Training.filter({ employee_id: employee.id }),
+        base44.entities.Employee.filter({ id: employee.id }).then(r => r[0])
+      ]);
       const validated = allTrainings.filter(t => t.status === 'Validado' || t.id === training.id);
-      const rawPts = validated.reduce((s, t) => s + (t.calculated_points || 0), 0);
+      const rawPts = validated.reduce((s, t) => {
+        let pts = (t.id === training.id ? (training.calculated_points || 0) : (t.calculated_points || 0));
+        if (pts === 0 && t.hours > 0 && t.grade > 0) {
+          pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
+        }
+        return s + pts;
+      }, 0);
       const totalPts = Math.round(rawPts * 100) / 100;
       const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
-      const pPct = calculatePostitlePercentage(employee.category, pHours);
-      await base44.entities.Employee.update(employee.id, {
+      const pPct = calculatePostitlePercentage(freshEmployee.category, pHours);
+      await base44.entities.Employee.update(freshEmployee.id, {
         training_points: totalPts,
         postitle_percentage: pPct,
-        total_points: Math.round(((employee.bienio_points || 0) + totalPts) * 100) / 100,
+        total_points: Math.round(((freshEmployee.bienio_points || 0) + totalPts) * 100) / 100,
       });
     },
     onSuccess: () => {

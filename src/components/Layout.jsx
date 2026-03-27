@@ -21,7 +21,6 @@ const navItems = [
   { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
   { path: '/DataAudit', label: 'Auditoría de Datos', icon: ClipboardList },
   { path: '/AuditSolapamientos', label: 'Solapamientos', icon: AlertTriangle },
-  { path: '/ImportarExperiencia', label: 'Importar Experiencia', icon: RotateCcw },
   { path: '/TablaSalarial', label: 'Tabla Salarial', icon: DollarSign },
 ];
 

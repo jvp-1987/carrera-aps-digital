@@ -116,10 +116,13 @@ function parseCarreraSheet(sheet, sheetName) {
   const kvData = {};
   let experienciaRows = [];
   let capacitacionRows = [];
+  let permisosRows = [];
   let inExperiencia = false;
   let inCapacitacion = false;
+  let inPermisos = false;
   let expHeaders = null;
   let capHeaders = null;
+  let permHeaders = null;
 
   for (let r = 2; r <= maxRow; r++) {
     const rt = rowText(r);
@@ -131,14 +134,48 @@ function parseCarreraSheet(sheet, sheetName) {
     // Detectar inicio de sección: solo en columna 0 para evitar falsos positivos con nombres de cursos
     const c0raw = cellStr(sheet, 0, r);
     const c0normRaw = norm(c0raw);
-    const isExpRow = !inExperiencia && /experiencia|periodos\s*de\s*servicio|servicio\s*anterior|historia\s*laboral/i.test(c0normRaw);
+    const isExpRow = !inExperiencia && /experiencia|periodos\s*de\s*servicio|servicio\s*anterior|historia\s*laboral/i.test(c0normRaw) && !/sin\s*goce/i.test(c0normRaw);
     const isCapRow = !inCapacitacion && /^capacitaci|^entrenamiento|^formaci/i.test(c0normRaw);
+    const isPermRow = !inPermisos && /permiso.*sin\s*goce|licencia.*sin\s*goce|sin\s*remuneraci/i.test(c0normRaw);
 
     if (isExpRow) {
-      inExperiencia = true; inCapacitacion = false; expHeaders = null; continue;
+      inExperiencia = true; inCapacitacion = false; inPermisos = false; expHeaders = null; continue;
     }
     if (isCapRow) {
-      inCapacitacion = true; inExperiencia = false; capHeaders = null; continue;
+      inCapacitacion = true; inExperiencia = false; inPermisos = false; capHeaders = null; continue;
+    }
+    if (isPermRow) {
+      inPermisos = true; inExperiencia = false; inCapacitacion = false; permHeaders = null; continue;
+    }
+
+    if (inPermisos) {
+      if (!permHeaders && rt.trim().length > 2) {
+        permHeaders = {};
+        for (let c = 0; c <= range.e.c; c++) {
+          const h = norm(cellStr(sheet, c, r));
+          if (h) permHeaders[h] = c;
+        }
+        continue;
+      }
+      if (permHeaders) {
+        const findCol = (...keys) => {
+          for (const k of keys) {
+            const found = Object.keys(permHeaders).find(h => h.includes(k));
+            if (found !== undefined) return cellStr(sheet, permHeaders[found], r);
+          }
+          return '';
+        };
+        const startDate = normalizeDateString(findCol('inicio', 'desde', 'fecha inicio', 'fecha'));
+        if (!startDate) continue;
+
+        permisosRows.push({
+          start_date: startDate,
+          end_date: normalizeDateString(findCol('termino', 'término', 'fin', 'hasta')),
+          days_count: parseInt(findCol('dia', 'días', 'dias', 'cantidad')) || 0,
+          resolution_number: findCol('resol', 'documento', 'motivo', 'obs'),
+        });
+      }
+      continue;
     }
 
     if (inExperiencia) {
@@ -284,6 +321,7 @@ function parseCarreraSheet(sheet, sheetName) {
     fecha_nacimiento: fechaNacimiento,
     experiencia: experienciaRows,
     capacitacion: capacitacionRows,
+    permisos: permisosRows,
   };
 }
 
@@ -325,14 +363,16 @@ async function importEmployee(emp, rutMap, onRateLimitRetry = null) {
     if (rutMap[emp.rut]) {
       await base44.entities.Employee.update(rutMap[emp.rut].id, payload);
       savedEmp = { ...rutMap[emp.rut], ...payload };
-      // Limpiar periodos y capacitaciones anteriores en paralelo
-      const [oldPeriods, oldTrainings] = await Promise.all([
+      // Limpiar periodos, capacitaciones y permisos anteriores en paralelo
+      const [oldPeriods, oldTrainings, oldLeaves] = await Promise.all([
         base44.entities.ServicePeriod.filter({ employee_id: savedEmp.id }),
         base44.entities.Training.filter({ employee_id: savedEmp.id }),
+        base44.entities.LeaveWithoutPay.filter({ employee_id: savedEmp.id }),
       ]);
       await Promise.all([
         ...oldPeriods.map(p => base44.entities.ServicePeriod.delete(p.id)),
         ...oldTrainings.map(t => base44.entities.Training.delete(t.id)),
+        ...oldLeaves.map(l => base44.entities.LeaveWithoutPay.delete(l.id)),
       ]);
     } else {
       savedEmp = await base44.entities.Employee.create(payload);
@@ -383,9 +423,22 @@ async function importEmployee(emp, rutMap, onRateLimitRetry = null) {
       };
     });
 
+  // Bulk crear permisos sin goce
+  const permisosValidos = (emp.permisos || [])
+    .filter(p => p.start_date)
+    .map(p => ({
+      employee_id: savedEmp.id,
+      start_date: p.start_date,
+      end_date: p.end_date || p.start_date,
+      days_count: p.days_count || 1,
+      reason: p.resolution_number ? `Excel: ${p.resolution_number}` : 'Carga masiva Excel',
+      resolution_number: p.resolution_number || '',
+    }));
+
   await Promise.all([
     periodosValidos.length > 0 ? base44.entities.ServicePeriod.bulkCreate(periodosValidos) : Promise.resolve(),
     capacitacionesValidas.length > 0 ? base44.entities.Training.bulkCreate(capacitacionesValidas) : Promise.resolve(),
+    permisosValidos.length > 0 ? base44.entities.LeaveWithoutPay.bulkCreate(permisosValidos) : Promise.resolve(),
   ]);
 }
 
@@ -396,7 +449,7 @@ function calculateDaysBetween(startStr, endStr) {
   try {
     const start = new Date(startStr);
     const end = new Date(endStr);
-    const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     return days > 0 ? days : null;
   } catch {
     return null;
@@ -419,10 +472,10 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
             <div>
               <span className="font-medium text-sm text-slate-800">{emp.sheetName}</span>
             </div>
-            {existsInDB && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">Actualiza</Badge>}
+            {existsInDB && <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">Actualiza</Badge>}
           </div>
           <div className="flex items-center gap-2">
-            {hasErrors && <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">{emp.errors.length} error{emp.errors.length > 1 ? 'es' : ''}</Badge>}
+            {hasErrors && <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-200 text-[10px]">{emp.errors.length} error{emp.errors.length > 1 ? 'es' : ''}</Badge>}
             {open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
           </div>
         </button>
@@ -493,6 +546,7 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
             <div className="flex gap-3 text-xs text-slate-500">
               {emp.data.experiencia?.length > 0 && <span>✓ {emp.data.experiencia.length} periodo(s) de servicio</span>}
               {emp.data.capacitacion?.length > 0 && <span>✓ {emp.data.capacitacion.length} capacitacion(es)</span>}
+              {emp.data.permisos?.length > 0 && <span>✓ {emp.data.permisos.length} permiso(s) sin goce</span>}
             </div>
             
             {emp.data.experiencia?.length > 0 && (
@@ -713,7 +767,9 @@ export default function ImportModule() {
                 <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-emerald-700 font-semibold">Experiencia</span></div>
                 <div className="pl-10 text-slate-500">Headers: Establecimiento | Fecha Inicio | Término | Días</div>
                 <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-blue-700 font-semibold">Capacitacion</span></div>
-                <div className="pl-10 text-slate-500">Headers: Institución – Nombre curso | Horas | Nota | Nivel | Fecha</div>
+                <div className="pl-10 text-slate-500 mb-1">Headers: Institución – Nombre curso | Horas | Nota | Nivel | Fecha</div>
+                <div className="mt-1"><span className="text-slate-400">Sección →</span> <span className="text-amber-700 font-semibold">Permisos Sin Goce</span></div>
+                <div className="pl-10 text-slate-500">Headers: Tipo | Fecha Inicio | Término | Días</div>
               </div>
               <div className="pt-2">
                 <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => fileInputRef.current?.click()}>
@@ -728,8 +784,8 @@ export default function ImportModule() {
             <div className="space-y-4">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-sm font-semibold text-slate-700">{localEmployees.length} funcionarios detectados</span>
-                <Badge className="bg-green-100 text-green-800">{localValidCount} válidos</Badge>
-                {localErrorCount > 0 && <Badge className="bg-red-100 text-red-800">{localErrorCount} con errores</Badge>}
+                <Badge variant="secondary" className="bg-green-100 text-green-800">{localValidCount} válidos</Badge>
+                {localErrorCount > 0 && <Badge variant="destructive" className="bg-red-100 text-red-800">{localErrorCount} con errores</Badge>}
               </div>
 
               <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">

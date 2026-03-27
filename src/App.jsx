@@ -20,7 +20,6 @@ import BudgetProjection from '@/pages/BudgetProjection';
 import ImportModule from '@/pages/ImportModule';
 import GestionEspecial from '@/pages/GestionEspecial';
 import DataAudit from '@/pages/DataAudit';
-import AuditSolapamientos from '@/pages/AuditSolapamientos';
 import TablaSalarial from '@/pages/TablaSalarial';
 
 const AuthenticatedApp = () => {
@@ -58,7 +57,6 @@ const AuthenticatedApp = () => {
         <Route path="/ImportModule" element={<ImportModule />} />
         <Route path="/GestionEspecial" element={<GestionEspecial />} />
         <Route path="/DataAudit" element={<DataAudit />} />
-        <Route path="/AuditSolapamientos" element={<AuditSolapamientos />} />
         <Route path="/TablaSalarial" element={<TablaSalarial />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

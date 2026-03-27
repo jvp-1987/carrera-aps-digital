@@ -8,7 +8,7 @@ export const useEmployees = () => {
     queryFn: async () => {
       try {
         logger.info('Fetching employees...');
-        const results = await base44.entities.Employee.where({}).find();
+        const results = await base44.entities.Employee.list('-created_date', 2000);
         logger.info(`Fetched ${results.length} employees`);
         return results;
       } catch (error) {
@@ -27,7 +27,7 @@ export const useEmployeeById = (id) => {
     queryFn: async () => {
       try {
         logger.info(`Fetching employee ${id}...`);
-        const employee = await base44.entities.Employee.findById(id);
+        const employee = await base44.entities.Employee.filter({ id }).then(r => r[0]);
         logger.info(`Fetched employee: ${employee.id}`);
         return employee;
       } catch (error) {
@@ -46,9 +46,13 @@ export const useEmployeesSearch = (searchTerm) => {
     queryFn: async () => {
       try {
         logger.info(`Searching employees: "${searchTerm}"`);
-        const results = await base44.entities.Employee
-          .where({ name: { $regex: searchTerm, $options: 'i' } })
-          .find();
+        // La búsqueda por regex/donde no parece estar soportada directamente como método .where()
+        // Por ahora listamos todos y filtramos localmente para restaurar funcionalidad básica
+        const all = await base44.entities.Employee.list(null, 2000);
+        const results = all.filter(e => 
+          e.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          e.rut?.includes(searchTerm)
+        );
         logger.info(`Found ${results.length} employees`);
         return results;
       } catch (error) {

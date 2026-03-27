@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, Loader, RefreshCw, Loader2, RotateCcw } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertTriangle, CheckCircle2, Loader, RefreshCw, Loader2, RotateCcw, Wrench, Copy, Trash2, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
-import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, calculatePostitlePercentage, calculateTrainingPoints } from '@/components/calculations';
 import { useAudit } from '@/lib/AuditContext';
 
-// ── Helpers de Limpieza ───────────────────────────────────────
+// ── Utilidades de Cálculo ─────────────────────────────────────
 function calcDays(start, end) {
   if (!start || !end) return null;
   try {
@@ -18,6 +18,34 @@ function calcDays(start, end) {
     return d > 0 ? d : null;
   } catch { return null; }
 }
+
+function detectOverlaps(periods) {
+  const sorted = [...periods]
+    .filter(p => p.start_date)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const overlaps = [];
+  for (let i = 0; i < sorted.length; i++) {
+    for (let j = i + 1; j < sorted.length; j++) {
+      const a = sorted[i];
+      const b = sorted[j];
+      const aEnd = a.end_date || '9999-12-31';
+      if (b.start_date <= aEnd) overlaps.push({ a, b });
+    }
+  }
+  return overlaps;
+}
+
+function detectDuplicates(periods) {
+  const seen = {};
+  const dupes = [];
+  periods.forEach(p => {
+    const key = `${p.employee_id}|${p.start_date}|${p.end_date || ''}`;
+    if (!seen[key]) { seen[key] = p; }
+    else { dupes.push({ original: seen[key], duplicate: p }); }
+  });
+  return dupes;
+}
+
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // Helper: Exponential Backoff para mitigar errores 429
@@ -32,7 +60,6 @@ const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
       const isRateLimit = err?.response?.status === 429 || err?.status === 429 || String(err).includes('429') || String(err).toLowerCase().includes('rate limit');
       if (isRateLimit && attempt < maxRetries - 1) {
         const backoffDelay = baseDelay * Math.pow(2, attempt + 1);
-        console.warn(`[API] Rate limit (429) detectado en recálculo. Reintentando en ${backoffDelay}ms... `);
         await new Promise(r => setTimeout(r, backoffDelay));
         attempt++;
       } else {
@@ -42,24 +69,24 @@ const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
   }
 };
 
+// ── Componente: Recálculo Masivo ───────────────────────────────
 function RecalcularPuntajesMasivo() {
   const { isRunning, progress, stats, currentStatus, startAudit } = useAudit();
   
   const handleRecalculate = async () => {
-    if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios (activos e inactivos)? Esto puede tomar varios minutos. Podrás seguir navegando por la aplicación mientras se procesa.')) return;
+    if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios? Esto puede tomar varios minutos.')) return;
     startAudit();
   };
 
   return (
-    <Card className="border-indigo-200 bg-indigo-50 mt-6 shadow-sm">
+    <Card className="border-indigo-200 bg-indigo-50 shadow-sm">
       <CardContent className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-semibold text-indigo-900 flex items-center gap-2">
             <RefreshCw className="w-5 h-5 text-indigo-600" /> Recálculo Masivo de Puntajes
           </h3>
           <p className="text-sm text-indigo-700 mt-1 max-w-xl">
-            Esta herramienta recalcula y actualiza los días efectivos, bienios contables, puntos de experiencia y puntos 
-            de capacitación de todos los funcionarios (incluyendo inactivos) basándose en la última data registrada.
+            Actualiza días efectivos, bienios, puntos de experiencia y capacitación de todos los funcionarios.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2 text-sm text-indigo-800 font-medium whitespace-nowrap w-full md:w-auto">
@@ -90,17 +117,14 @@ function RecalcularPuntajesMasivo() {
   );
 }
 
-const BATCH_SIZE = 5;
-const BATCH_PAUSE = 600;
-
+// ── Componente: Herramienta de Limpieza de Días ───────────────
 function HerramientaLimpiezaDias() {
-  const [status, setStatus] = useState('idle'); // idle | loading | running | done
-  const [allPeriods, setAllPeriods] = useState([]);
+  const [status, setStatus] = useState('idle');
   const [toFix, setToFix] = useState([]);
   const [progress, setProgress] = useState(0);
   const [updated, setUpdated] = useState(0);
   const [errors, setErrors] = useState(0);
-  const [isCanceled, setIsCanceled] = useState(false);
+  const [allCount, setAllCount] = useState(0);
 
   const handleAnalyze = async () => {
     setStatus('loading');
@@ -110,131 +134,67 @@ function HerramientaLimpiezaDias() {
       const correct = calcDays(p.start_date, p.end_date);
       return correct !== null && p.days_count !== correct;
     });
-    setAllPeriods(periods);
+    setAllCount(periods.length);
     setToFix(needFix);
     setStatus('idle');
+    if (needFix.length === 0) toast.info('No se detectaron discrepancias en los días.');
   };
 
   const handleRun = async () => {
-    setIsCanceled(false);
     setStatus('running');
-    setProgress(0);
-    setUpdated(0);
-    setErrors(0);
-    let done = 0;
-    let updCount = 0;
-    let errCount = 0;
+    let done = 0, upd = 0, errs = 0;
+    const batchSize = 5;
 
-    for (let i = 0; i < toFix.length; i += BATCH_SIZE) {
-      if (isCanceled) break;
-      const batch = toFix.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < toFix.length; i += batchSize) {
+      const batch = toFix.slice(i, i + batchSize);
       await Promise.all(batch.map(async (p) => {
-        const correct = calcDays(p.start_date, p.end_date);
         try {
+          const correct = calcDays(p.start_date, p.end_date);
           await safeApiCall(() => base44.entities.ServicePeriod.update(p.id, { days_count: correct }), 3, 200);
-          updCount++;
-        } catch (err) {
-          errCount++;
-        }
+          upd++;
+        } catch { errs++; }
       }));
       done += batch.length;
       setProgress(Math.round((done / toFix.length) * 100));
-      setUpdated(updCount);
-      setErrors(errCount);
-      if (i + BATCH_SIZE < toFix.length) await sleep(BATCH_PAUSE);
+      setUpdated(upd);
+      setErrors(errs);
     }
     setStatus('done');
-  };
-
-  const handleReset = () => {
-    setStatus('idle');
-    setAllPeriods([]);
-    setToFix([]);
-    setProgress(0);
-    setUpdated(0);
-    setErrors(0);
-    setIsCanceled(false);
+    toast.success('Corrección finalizada');
   };
 
   return (
-    <Card className="border-slate-200 shadow-sm overflow-hidden">
+    <Card className="border-slate-200 shadow-sm h-full">
       <CardHeader className="pb-3 border-b bg-slate-50/50">
         <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-indigo-500" /> Auditoría de Días de Períodos
+          <RefreshCw className="w-4 h-4 text-indigo-500" /> Auditoría de Días
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 space-y-3">
-        <p className="text-xs text-slate-500">
-          Detecta períodos cuyo campo <code className="bg-slate-100 px-1 rounded text-indigo-700">days_count</code> no coincide
-          con la diferencia real entre inicio y término (incluyendo ambos días), y los corrige en lotes.
-        </p>
-
-        {status === 'idle' && allPeriods.length === 0 && (
-          <Button size="sm" variant="outline" onClick={handleAnalyze}>
-            Analizar discrepancias
-          </Button>
-        )}
-
-        {status === 'loading' && (
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando períodos...
-          </div>
-        )}
-
-        {status === 'idle' && allPeriods.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex gap-4 text-xs text-slate-600">
-              <span>Total períodos: <strong>{allPeriods.length}</strong></span>
-              <span className={toFix.length > 0 ? 'text-amber-700 font-semibold' : 'text-emerald-700 font-semibold'}>
-                {toFix.length > 0 ? `${toFix.length} requieren corrección` : '✓ Todos correctos'}
-              </span>
-            </div>
-            {toFix.length > 0 ? (
-              <div className="flex gap-2">
-                <Button size="sm" className="bg-slate-800 hover:bg-slate-900" onClick={handleRun}>
-                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Corregir {toFix.length} períodos
-                </Button>
-                <Button size="sm" variant="ghost" onClick={handleReset}>Cancelar</Button>
-              </div>
-            ) : (
-              <Button size="sm" variant="ghost" onClick={handleReset}>
-                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Nueva verificación
-              </Button>
-            )}
-          </div>
-        )}
-
-        {status === 'running' && (
-          <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
-                Procesando... {Math.round((progress / 100) * toFix.length)} / {toFix.length}
-              </span>
-              <button className="text-red-500 hover:underline text-[10px]" onClick={() => setIsCanceled(true)}>
-                Detener
-              </button>
+        {status === 'loading' ? (
+          <div className="flex items-center gap-2 text-xs text-slate-500 py-4"><Loader2 className="w-4 h-4 animate-spin" /> Analizando períodos...</div>
+        ) : status === 'running' ? (
+          <div className="space-y-2 py-2">
+            <div className="flex justify-between text-xs text-slate-600 underline decoration-indigo-200 decoration-2">
+              <span>Procesando {updated + errors} / {toFix.length}</span>
+              <span>{progress}%</span>
             </div>
             <Progress value={progress} className="h-1.5" />
-            <div className="flex gap-4 text-[10px]">
-              {updated > 0 && <span className="text-emerald-700 font-medium">✓ {updated} actualizados</span>}
-              {errors > 0 && <span className="text-red-600 font-medium">✗ {errors} errores</span>}
-            </div>
           </div>
-        )}
-
-        {status === 'done' && (
+        ) : status === 'done' ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-emerald-700 text-sm font-semibold">
-              <CheckCircle2 className="w-4 h-4" /> Proceso completado
-            </div>
-            <div className="flex gap-4 text-xs">
-              <span className="text-emerald-700 font-medium">✓ {updated} períodos corregidos</span>
-              {errors > 0 && <span className="text-red-600 font-medium">✗ {errors} errores</span>}
-            </div>
-            <Button size="sm" variant="ghost" onClick={handleReset} className="h-7 text-xs">
-              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Nueva verificación
-            </Button>
+            <p className="text-xs text-emerald-700 font-medium">✓ {updated} períodos corregidos.</p>
+            <Button size="sm" variant="ghost" onClick={() => setStatus('idle')} className="h-7 text-xs">Finalizar</Button>
+          </div>
+        ) : toFix.length > 0 ? (
+          <div className="space-y-3">
+            <p className="text-xs text-amber-700">Se detectaron <strong>{toFix.length}</strong> períodos con conteo de días incorrecto.</p>
+            <Button size="sm" onClick={handleRun} className="bg-slate-800 hover:bg-slate-900">Corregir ahora</Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">Compara `days_count` contra las fechas `inicio` y `término`.</p>
+            <Button size="sm" variant="outline" onClick={handleAnalyze}>Analizar discrepancias</Button>
           </div>
         )}
       </CardContent>
@@ -242,8 +202,123 @@ function HerramientaLimpiezaDias() {
   );
 }
 
-export default function DataAudit() {
+// ── Componente: Auditoría de Solapamientos ─────────────────────
+function LimpiezaPeriodosTab({ employees, servicePeriods }) {
+  const queryClient = useQueryClient();
+  const [resolving, setResolving] = useState(null);
+  
+  const empMap = useMemo(() => {
+    const m = {};
+    employees.forEach(e => { m[e.id] = e; });
+    return m;
+  }, [employees]);
 
+  const duplicates = useMemo(() => detectDuplicates(servicePeriods), [servicePeriods]);
+  const overlapsResults = useMemo(() => {
+    const byEmp = {};
+    servicePeriods.forEach(sp => {
+      if (!byEmp[sp.employee_id]) byEmp[sp.employee_id] = [];
+      byEmp[sp.employee_id].push(sp);
+    });
+    const conflicts = [];
+    Object.entries(byEmp).forEach(([empId, periods]) => {
+      const overlaps = detectOverlaps(periods);
+      if (overlaps.length > 0) conflicts.push({ emp: empMap[empId], empId, overlaps });
+    });
+    return conflicts;
+  }, [servicePeriods, empMap]);
+
+  const handleDeleteDupe = async (id) => {
+    if (!confirm('¿Eliminar este registro duplicado?')) return;
+    await safeApiCall(() => base44.entities.ServicePeriod.delete(id));
+    toast.success('Duplicado eliminado');
+    queryClient.invalidateQueries({ queryKey: ['service-periods-audit'] });
+  };
+
+  const handleResolveOverlap = async (ov) => {
+    setResolving(ov.b.id);
+    await safeApiCall(() => base44.entities.ServicePeriod.update(ov.b.id, {
+      days_count: 0,
+      ajustado_por_solapamiento: true,
+      conflict_status: 'Ajustado',
+      solapamiento_detalle: `Ajustado a 0 días por solapamiento con ${ov.a.start_date}→${ov.a.end_date}`,
+    }));
+    toast.success('Período penalizado a 0 días');
+    queryClient.invalidateQueries({ queryKey: ['service-periods-audit'] });
+    setResolving(null);
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Duplicados */}
+      <Card className="border-orange-100 bg-orange-50/30 h-fit">
+        <CardHeader className="pb-3 border-b border-orange-100">
+          <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
+            <Copy className="w-4 h-4" /> Duplicados Exactos ({duplicates.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 space-y-2">
+          {duplicates.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">No se detectaron duplicados.</p>
+          ) : (
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+              {duplicates.map((d, i) => (
+                <div key={i} className="bg-white p-3 rounded-md border border-orange-200 flex justify-between items-center text-xs">
+                  <div>
+                    <p className="font-semibold text-slate-800">{empMap[d.duplicate.employee_id]?.full_name || 'Desconocido'}</p>
+                    <p className="text-slate-500">{d.duplicate.start_date} → {d.duplicate.end_date || '?'}</p>
+                    <p className="text-[10px] text-slate-400 italic">{d.duplicate.institution}</p>
+                  </div>
+                  <Button size="icon" variant="ghost" className="text-red-500 h-8 w-8" onClick={() => handleDeleteDupe(d.duplicate.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Solapamientos */}
+      <Card className="border-red-100 bg-red-50/30 h-fit">
+        <CardHeader className="pb-3 border-b border-red-100">
+          <CardTitle className="text-sm font-bold text-red-800 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" /> Solapamientos de Fechas ({overlapsResults.length} funcionarios)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 space-y-4">
+          {overlapsResults.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">Sin solapamientos detectados.</p>
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+              {overlapsResults.slice(0, 10).map((res, i) => (
+                <div key={i} className="bg-white p-3 rounded-md border border-red-200 space-y-2">
+                  <p className="text-sm font-bold text-slate-800 border-b pb-1">{res.emp?.full_name}</p>
+                  {res.overlaps.map((ov, j) => (
+                    <div key={j} className="text-xs bg-red-50/50 p-2 rounded flex justify-between items-center gap-2">
+                      <div className="flex-1">
+                        <p className="text-slate-600"><span className="font-semibold">A:</span> {ov.a.start_date} → {ov.a.end_date} ({ov.a.days_count}d)</p>
+                        <p className="text-red-700 font-medium"><span className="font-semibold">B:</span> {ov.b.start_date} → {ov.b.end_date} (Solapa)</p>
+                      </div>
+                      <Button size="sm" variant="outline" className="h-8 border-red-200 text-red-700 hover:bg-red-100" onClick={() => handleResolveOverlap(ov)} disabled={resolving === ov.b.id}>
+                        {resolving === ov.b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wrench className="w-3.5 h-3.5 mr-1" />}
+                        Subsanar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {overlapsResults.length > 10 && <p className="text-[10px] text-slate-400 text-center italic">... y {overlapsResults.length - 10} funcionarios más.</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Componente Principal ──────────────────────────────────────
+export default function DataAudit() {
   const { data: employees = [], isLoading: empLoading } = useQuery({
     queryKey: ['employees-audit'],
     queryFn: () => base44.entities.Employee.list('-created_date', 2000),
@@ -266,159 +341,143 @@ export default function DataAudit() {
 
   const isLoading = empLoading;
 
-  // Agrupar por empleado
-  const employeeServiceMap = {};
-  const employeeTrainingMap = {};
-
-  servicePeriods.forEach(sp => {
-    if (!employeeServiceMap[sp.employee_id]) employeeServiceMap[sp.employee_id] = [];
-    employeeServiceMap[sp.employee_id].push(sp);
+  // Analizar Vacíos
+  const noExperience = employees.filter(e => {
+    const p = servicePeriods.filter(sp => sp.employee_id === e.id);
+    return p.length === 0 || (e.total_experience_days || 0) === 0;
   });
-
-  trainings.forEach(t => {
-    if (!employeeTrainingMap[t.employee_id]) employeeTrainingMap[t.employee_id] = [];
-    employeeTrainingMap[t.employee_id].push(t);
-  });
-
-  // Analizar
-  const noExperience = employees.filter(e => !employeeServiceMap[e.id] || (e.total_experience_days || 0) === 0);
   const noTraining = employees.filter(e => (e.training_points || 0) === 0);
-  const noEither = employees.filter(e => ((e.training_points || 0) === 0) && (!employeeServiceMap[e.id] || (e.total_experience_days || 0) === 0));
+  const noEither = noExperience.filter(e => (e.training_points || 0) === 0);
 
   if (isLoading) {
     return (
-      <div className="p-6 flex justify-center items-center min-h-screen">
-        <Loader className="w-6 h-6 animate-spin text-slate-400" />
+      <div className="p-6 flex justify-center items-center min-h-[300px]">
+        <Loader className="w-8 h-8 animate-spin text-slate-300" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Auditoría de Datos</h1>
-        <p className="text-sm text-slate-500 mt-1">Funcionarios sin información de experiencia o capacitación</p>
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg">
+          <ClipboardList className="w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Centro de Auditoría</h1>
+          <p className="text-slate-500 text-sm">Mantenimiento de integridad, cálculo masivo y saneamiento de datos</p>
+        </div>
       </div>
 
-      <RecalcularPuntajesMasivo />
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="bg-slate-100 p-1 h-11 border border-slate-200">
+          <TabsTrigger value="overview" className="px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">Recálculo y Resumen</TabsTrigger>
+          <TabsTrigger value="periods" className="px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">Limpieza de Períodos</TabsTrigger>
+          <TabsTrigger value="gaps" className="px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">Vacíos Críticos</TabsTrigger>
+        </TabsList>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-        <HerramientaLimpiezaDias />
-        <Card className="border-slate-200 shadow-sm h-full">
-          <CardHeader className="pb-3 border-b bg-slate-50/50">
-            <CardTitle className="text-sm font-bold text-slate-800">Resumen de Registros</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-white border rounded text-center">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase">Períodos</p>
-                <p className="text-xl font-bold text-slate-900 mt-1">{servicePeriods.length}</p>
-              </div>
-              <div className="p-3 bg-white border rounded text-center">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase">Capacitaciones</p>
-                <p className="text-xl font-bold text-slate-900 mt-1">{trainings.length}</p>
-              </div>
-              <div className="p-3 bg-white border rounded text-center">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase">Permisos</p>
-                <p className="text-xl font-bold text-slate-900 mt-1">{leaves.length}</p>
-              </div>
-              <div className="p-3 bg-white border rounded text-center">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase">Funcionarios</p>
-                <p className="text-xl font-bold text-slate-900 mt-1">{employees.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="pt-4">
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-500" />
-          Detección de Vacíos Críticos
-        </h2>
-      </div>
-
-      {/* Sin experiencia */}
-      {noExperience.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-red-700">
-              <AlertTriangle className="w-4 h-4" /> Sin períodos de servicio ({noExperience.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {noExperience.map(emp => (
-                <div key={emp.id} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
-                  <div>
-                    <p className="font-medium text-slate-900">{emp.full_name}</p>
-                    <p className="text-xs text-slate-500">{emp.rut}</p>
-                  </div>
-                  <Badge variant="destructive" className="bg-red-100 text-red-700">{emp.category}</Badge>
+        <TabsContent value="overview" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <RecalcularPuntajesMasivo />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border-slate-200 shadow-sm">
+              <CardHeader className="pb-3 bg-slate-50/50 border-b">
+                <CardTitle className="text-sm font-bold text-slate-800">Estadísticas de la Base de Datos</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Funcionarios', val: employees.length, bg: 'bg-blue-50', text: 'text-blue-700' },
+                    { label: 'Períodos', val: servicePeriods.length, bg: 'bg-emerald-50', text: 'text-emerald-700' },
+                    { label: 'Capacitaciones', val: trainings.length, bg: 'bg-indigo-50', text: 'text-indigo-700' },
+                    { label: 'Permisos S/G', val: leaves.length, bg: 'bg-amber-50', text: 'text-amber-700' },
+                  ].map(s => (
+                    <div key={s.label} className={`${s.bg} rounded-xl p-4 border border-white/50 text-center shadow-inner`}>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{s.label}</p>
+                      <p className={`text-2xl font-black ${s.text} mt-1`}>{s.val}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+            <HerramientaLimpiezaDias />
+          </div>
+        </TabsContent>
 
-      {/* Sin capacitación */}
-      {noTraining.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-orange-700">
-              <AlertTriangle className="w-4 h-4" /> Sin capacitación ({noTraining.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {noTraining.map(emp => (
-                <div key={emp.id} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
-                  <div>
-                    <p className="font-medium text-slate-900">{emp.full_name}</p>
-                    <p className="text-xs text-slate-500">{emp.rut}</p>
-                  </div>
-                  <Badge variant="outline" className="bg-orange-100 text-orange-700">{emp.category}</Badge>
+        <TabsContent value="periods" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <LimpiezaPeriodosTab employees={employees} servicePeriods={servicePeriods} />
+        </TabsContent>
+
+        <TabsContent value="gaps" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="border-red-200 bg-red-50/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-bold text-red-800 flex items-center gap-1.5 uppercase tracking-tight">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Sin Experiencia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-black text-red-900">{noExperience.length}</p>
+                <p className="text-[10px] text-red-600 mt-1 uppercase font-semibold">Casos detectados</p>
+                <div className="mt-4 space-y-1 max-h-60 overflow-y-auto">
+                  {noExperience.slice(0, 50).map(e => (
+                    <div key={e.id} className="text-[10px] text-slate-600 bg-white border border-red-100 rounded px-2 py-1 flex justify-between">
+                      <span className="truncate w-32">{e.full_name}</span>
+                      <span className="font-mono">{e.rut}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
 
-      {/* Sin ambos */}
-      {noEither.length > 0 && (
-        <Card className="border-rose-300 bg-rose-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-rose-700">
-              <AlertTriangle className="w-4 h-4" /> Crítico: Sin experiencia ni capacitación ({noEither.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {noEither.map(emp => (
-                <div key={emp.id} className="flex items-center justify-between p-2 bg-white rounded text-sm border border-rose-200">
-                  <div>
-                    <p className="font-bold text-rose-900">{emp.full_name}</p>
-                    <p className="text-xs text-rose-700">{emp.rut}</p>
-                  </div>
-                  <Badge variant="destructive" className="bg-rose-200 text-rose-900">{emp.category}</Badge>
+            <Card className="border-orange-200 bg-orange-50/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-bold text-orange-800 flex items-center gap-1.5 uppercase tracking-tight">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Sin Capacitación
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-black text-orange-900">{noTraining.length}</p>
+                <p className="text-[10px] text-orange-600 mt-1 uppercase font-semibold">Casos detectados</p>
+                <div className="mt-4 space-y-1 max-h-60 overflow-y-auto">
+                  {noTraining.slice(0, 50).map(e => (
+                    <div key={e.id} className="text-[10px] text-slate-600 bg-white border border-orange-100 rounded px-2 py-1 flex justify-between">
+                      <span className="truncate w-32">{e.full_name}</span>
+                      <span className="font-mono">{e.rut}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
 
-      {noExperience.length === 0 && noTraining.length === 0 && (
-        <Card className="border-emerald-200 bg-emerald-50">
-          <CardContent className="p-6 text-center">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-            <p className="text-emerald-700 font-semibold">¡Excelente!</p>
-            <p className="text-sm text-emerald-600 mt-1">Todos los funcionarios tienen información de experiencia y capacitación.</p>
-          </CardContent>
-        </Card>
-      )}
+            <Card className="border-rose-300 bg-rose-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-bold text-rose-800 flex items-center gap-1.5 uppercase tracking-tight">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Crítico: Falta Todo
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-black text-rose-900">{noEither.length}</p>
+                <p className="text-[10px] text-rose-600 mt-1 uppercase font-semibold">Casos críticos</p>
+                <div className="mt-4 space-y-1 max-h-60 overflow-y-auto">
+                  {noEither.slice(0, 50).map(e => (
+                    <div key={e.id} className="text-[10px] text-rose-800 bg-white border border-rose-200 rounded px-2 py-1 flex justify-between font-bold">
+                      <span className="truncate w-32">{e.full_name}</span>
+                      <span className="font-mono">{e.rut}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          {noExperience.length === 0 && noTraining.length === 0 && (
+            <div className="text-center py-12 bg-emerald-50 border border-emerald-100 rounded-2xl">
+              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+              <p className="text-emerald-800 font-bold text-lg">Integridad Total</p>
+              <p className="text-emerald-600 text-sm mt-1">Todos los funcionarios cuentan con registros básicos de experiencia y capacitación.</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

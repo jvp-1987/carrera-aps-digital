@@ -10,18 +10,32 @@ import NotificationBell from '@/components/NotificationBell';
 import ImportProgressBanner from '@/components/ImportProgressBanner';
 import AuditProgressBanner from '@/components/AuditProgressBanner';
 
-const navItems = [
-  { path: '/Dashboard', label: 'Panel', icon: LayoutDashboard },
-  { path: '/Employees', label: 'Funcionarios', icon: Users },
-  { path: '/TrainingModule', label: 'Capacitación', icon: GraduationCap },
-  { path: '/Resolutions', label: 'Resoluciones', icon: FileText },
-  { path: '/Alerts', label: 'Alertas', icon: Bell },
-  { path: '/BudgetProjection', label: 'Proyección 2027', icon: TrendingUp },
-  { path: '/ImportModule', label: 'Importación', icon: UploadCloud },
-  { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
-  { path: '/DataAudit', label: 'Auditoría de Datos', icon: ClipboardList },
-  { path: '/AuditSolapamientos', label: 'Solapamientos', icon: AlertTriangle },
-  { path: '/TablaSalarial', label: 'Tabla Salarial', icon: DollarSign },
+const navGroups = [
+  {
+    title: 'Principal',
+    items: [
+      { path: '/Dashboard', label: 'Panel', icon: LayoutDashboard },
+      { path: '/Employees', label: 'Funcionarios', icon: Users },
+    ]
+  },
+  {
+    title: 'Gestión APS',
+    items: [
+      { path: '/TrainingModule', label: 'Capacitación', icon: GraduationCap },
+      { path: '/Resolutions', label: 'Resoluciones', icon: FileText },
+      { path: '/Alerts', label: 'Inteligencia', icon: Bell },
+    ]
+  },
+  {
+    title: 'Avanzado',
+    items: [
+      { path: '/ImportModule', label: 'Importación', icon: UploadCloud },
+      { path: '/DataAudit', label: 'Centro de Auditoría', icon: ClipboardList },
+      { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
+      { path: '/BudgetProjection', label: 'Proyección 2027', icon: TrendingUp },
+      { path: '/TablaSalarial', label: 'Tabla Salarial', icon: DollarSign },
+    ]
+  }
 ];
 
 export default function Layout() {
@@ -43,25 +57,34 @@ export default function Layout() {
           )}
         </div>
 
-        <nav className="flex-1 py-4 space-y-1 px-2">
-          {navItems.map(item => {
-            const isActive = location.pathname.startsWith(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  isActive 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-                title={collapsed ? item.label : undefined}
-              >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 py-4 space-y-6 px-2 overflow-y-auto">
+          {navGroups.map(group => (
+            <div key={group.title} className="space-y-1">
+              {!collapsed && (
+                <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-tighter mb-2">
+                  {group.title}
+                </p>
+              )}
+              {group.items.map(item => {
+                const isActive = location.pathname.startsWith(item.path);
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      isActive 
+                        ? 'bg-indigo-600 text-white shadow-md' 
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    }`}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    {!collapsed && <span>{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="p-2 border-t border-slate-700 space-y-1">

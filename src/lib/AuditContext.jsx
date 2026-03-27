@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { 
@@ -51,6 +52,7 @@ const fetchAll = async (entity) => {
 };
 
 export function AuditProvider({ children }) {
+  const queryClient = useQueryClient();
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [stats, setStats] = useState(null);
@@ -151,6 +153,9 @@ export function AuditProvider({ children }) {
         setIsRunning(false);
         setStats({ ok, errors, total });
         setCurrentStatus('');
+        // Invalidar cache para refrescar vistas
+        queryClient.invalidateQueries({ queryKey: ['employees'] });
+        queryClient.invalidateQueries({ queryKey: ['employees-audit'] });
         toast.success(`Auditoría terminada. ${ok} actualizados, ${errors} errores.`);
       } catch (globalErr) {
         console.error("Critical audit error:", globalErr);

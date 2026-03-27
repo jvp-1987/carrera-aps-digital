@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, GraduationCap, FileUp, Lock, AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import { Plus, GraduationCap, FileUp, Lock, AlertCircle, Pencil, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR } from '@/components/calculations';
 
@@ -115,6 +115,38 @@ export default function TrainingTab({ employee }) {
       toast.success('Capacitación validada y puntaje actualizado');
     },
   });
+  
+  const syncScores = useMutation({
+    mutationFn: async () => {
+      // Obtener data fresca
+      const [allTrainings, freshEmployee] = await Promise.all([
+        base44.entities.Training.filter({ employee_id: employee.id }),
+        base44.entities.Employee.filter({ id: employee.id }).then(r => r[0])
+      ]);
+      const validated = allTrainings.filter(t => t.status === 'Validado');
+      const rawPts = validated.reduce((s, t) => {
+        let pts = t.calculated_points || 0;
+        if (pts === 0 && t.hours > 0 && t.grade > 0) {
+          pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
+        }
+        return s + pts;
+      }, 0);
+      const totalPts = Math.round(rawPts * 100) / 100;
+      const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
+      const pPct = calculatePostitlePercentage(freshEmployee.category, pHours);
+      await base44.entities.Employee.update(freshEmployee.id, {
+        training_points: totalPts,
+        postitle_percentage: pPct,
+        total_points: Math.round(((freshEmployee.bienio_points || 0) + totalPts) * 100) / 100,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee', employee.id] });
+      toast.success('Puntajes sincronizados correctamente');
+    },
+  });
+
+  const needsSync = Math.abs(totalTrainingPoints - (employee.training_points || 0)) > 0.05;
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];

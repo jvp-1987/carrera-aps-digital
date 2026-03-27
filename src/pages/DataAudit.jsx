@@ -39,7 +39,8 @@ function detectDuplicates(periods) {
   const seen = {};
   const dupes = [];
   periods.forEach(p => {
-    const key = `${p.employee_id}|${p.start_date}|${p.end_date || ''}`;
+    // Definición estricta de duplicado: Misma persona, mismas fechas, misma institución y mismo tipo
+    const key = `${p.employee_id}|${p.start_date}|${p.end_date || ''}|${p.institution || ''}|${p.period_type || ''}`;
     if (!seen[key]) { seen[key] = p; }
     else { dupes.push({ original: seen[key], duplicate: p }); }
   });
@@ -209,87 +210,6 @@ function HerramientaLimpiezaDias() {
 }
 
 // ── Componente: Auditoría de Solapamientos ─────────────────────
-function HerramientaLimpiezaProfunda({ duplicates, servicePeriods, queryClient }) {
-  const [isCleaning, setIsCleaning] = useState(false);
-  const totalDupes = duplicates.length;
-  const totalAdjusted = servicePeriods.filter(p => (parseNumeric(p.days_count) === 0) && (p.ajustado_por_solapamiento || p.conflict_status === 'Ajustado')).length;
-
-  const handleCleanAll = async () => {
-    if (!window.confirm(`¿Estás seguro de eliminar definitivamente ${totalDupes} duplicados y ${totalAdjusted} registros ya subsanados? Esta acción no se puede deshacer.`)) return;
-    
-    setIsCleaning(true);
-    let deleted = 0;
-    try {
-      // 1. Eliminar Duplicados
-      for (const d of duplicates) {
-        await base44.entities.ServicePeriod.delete(d.duplicate.id);
-        deleted++;
-      }
-
-      // 2. Eliminar Ajustados (Subsanados)
-      const adjusted = servicePeriods.filter(p => 
-        (parseNumeric(p.days_count) === 0) && (p.ajustado_por_solapamiento || p.conflict_status === 'Ajustado')
-      );
-      
-      for (const a of adjusted) {
-        await base44.entities.ServicePeriod.delete(a.id);
-        deleted++;
-      }
-
-      toast.success(`${deleted} registros eliminados exitosamente.`);
-      queryClient.invalidateQueries({ queryKey: ["service-periods-audit"] });
-    } catch (err) {
-      console.error(err);
-      toast.error("Ocurrió un error parcial durante la limpieza.");
-    } finally {
-      setIsCleaning(false);
-    }
-  };
-
-  return (
-    <Card className="border-indigo-100 bg-indigo-50/20">
-      <CardHeader className="pb-3 px-6 pt-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle className="text-sm font-bold text-indigo-900 flex items-center gap-2 uppercase tracking-tight">
-              <Trash2 className="w-4 h-4" /> Limpieza Profunda de Registros
-            </CardTitle>
-            <p className="text-[10px] text-slate-500 mt-1 uppercase font-semibold">Eliminar definitivamente duplicados y solapamientos ya subsanados</p>
-          </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="px-6 font-bold shadow-lg shadow-red-200"
-            disabled={isCleaning || (totalDupes === 0 && totalAdjusted === 0)}
-            onClick={handleCleanAll}
-          >
-            {isCleaning ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                Limpiando...
-              </>
-            ) : (
-              `Eliminar Registros (${totalDupes + totalAdjusted})`
-            )}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="px-6 pb-6 pt-0">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-3 rounded-lg border border-indigo-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Duplicados Exactos</p>
-            <p className="text-xl font-black text-indigo-900">{totalDupes}</p>
-          </div>
-          <div className="bg-white p-3 rounded-lg border border-indigo-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Subsanados (Sin impacto)</p>
-            <p className="text-xl font-black text-indigo-900">{totalAdjusted}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function LimpiezaPeriodosTab({ employees, servicePeriods }) {
   const queryClient = useQueryClient();
   const [resolving, setResolving] = useState(null);
@@ -337,7 +257,6 @@ function LimpiezaPeriodosTab({ employees, servicePeriods }) {
 
   return (
     <div className="space-y-6">
-      <HerramientaLimpiezaProfunda duplicates={duplicates} servicePeriods={servicePeriods} queryClient={queryClient} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Duplicados */}
         <Card className="border-orange-100 bg-orange-50/30 h-fit">
@@ -352,15 +271,13 @@ function LimpiezaPeriodosTab({ employees, servicePeriods }) {
             ) : (
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                 {duplicates.map((d, i) => (
-                  <div key={i} className="bg-white p-3 rounded-md border border-orange-200 flex justify-between items-center text-xs">
-                    <div>
+                  <div key={i} className="bg-white p-3 rounded-md border border-orange-200 flex flex-col text-xs space-y-1">
+                    <div className="flex justify-between items-start">
                       <p className="font-semibold text-slate-800">{empMap[d.duplicate.employee_id]?.full_name || 'Desconocido'}</p>
-                      <p className="text-slate-500">{d.duplicate.start_date} → {d.duplicate.end_date || '?'}</p>
-                      <p className="text-[10px] text-slate-400 italic">{d.duplicate.institution}</p>
+                      <Badge variant="outline" className="text-[10px] scale-90">Duplicado</Badge>
                     </div>
-                    <Button size="icon" variant="ghost" className="text-red-500 h-8 w-8" onClick={() => handleDeleteDupe(d.duplicate.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <p className="text-slate-500">{d.duplicate.start_date} → {d.duplicate.end_date || '?'}</p>
+                    <p className="text-[10px] text-slate-400 italic">{d.duplicate.institution}</p>
                   </div>
                 ))}
               </div>

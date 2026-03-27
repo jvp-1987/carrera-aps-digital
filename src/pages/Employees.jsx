@@ -83,7 +83,7 @@ export default function Employees() {
   }, [filteredEmployees]);
 
   const handleExportExcel = () => {
-    const headers = ['Nombre','RUT','Categoría','Cargo','Establecimiento','Estado','Tipo Contrato','Nivel Actual','Puntaje Total','Bienios'];
+    const headers = ['Nombre','RUT','Categoría','Cargo','Establecimiento','Estado','Tipo Contrato','Nivel Actual','Puntos Capacitación','Puntaje Total','Bienios'];
     const rows = filteredEmployees.map(emp => [
       emp.full_name || '',
       emp.rut || '',
@@ -93,6 +93,7 @@ export default function Employees() {
       emp.status || '',
       emp.contract_type || '',
       emp.current_level || '',
+      emp.training_points || '0',
       emp.total_points || '',
       emp.bienios_count || '',
     ]);

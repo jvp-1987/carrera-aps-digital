@@ -160,9 +160,9 @@ export default function DataAudit() {
   });
 
   // Analizar
-  const noExperience = employees.filter(e => !employeeServiceMap[e.id]);
-  const noTraining = employees.filter(e => !employeeTrainingMap[e.id]);
-  const noEither = employees.filter(e => !employeeServiceMap[e.id] && !employeeTrainingMap[e.id]);
+  const noExperience = employees.filter(e => !employeeServiceMap[e.id] || (e.total_experience_days || 0) === 0);
+  const noTraining = employees.filter(e => (e.training_points || 0) === 0);
+  const noEither = employees.filter(e => ((e.training_points || 0) === 0) && (!employeeServiceMap[e.id] || (e.total_experience_days || 0) === 0));
 
   if (isLoading) {
     return (

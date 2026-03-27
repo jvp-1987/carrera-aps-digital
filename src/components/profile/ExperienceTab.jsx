@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Building2, Pencil, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate } from '@/components/calculations';
+import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate, formatDaysToYMD } from '@/components/calculations';
 
 // Detecta si dos periodos se solapan
 function periodsOverlap(startA, endA, startB, endB) {
@@ -220,6 +220,9 @@ export default function ExperienceTab({ employee }) {
           <CardContent className="p-4 text-center">
             <p className="text-xs text-slate-400 mb-1">Días Efectivos</p>
             <p className="text-2xl font-bold text-slate-900">{effectiveDays}</p>
+            <p className="text-[10px] text-slate-500 mt-1 uppercase font-semibold">
+              {formatDaysToYMD(effectiveDays)}
+            </p>
           </CardContent>
         </Card>
         <Card>

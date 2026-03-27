@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, User, Briefcase, GraduationCap, FileText, Star, Clock, AlertTriangle, DollarSign, TrendingUp, Pencil, Check, X, Umbrella, Shield, Zap, Award, BookOpen, Calendar, UserCircle2 } from 'lucide-react';
-import { checkPromotion, calculateTrainingGap, LEVEL_RANGES_AB, LEVEL_RANGES_CF } from '@/components/calculations';
+import { checkPromotion, calculateTrainingGap, LEVEL_RANGES_AB, LEVEL_RANGES_CF, formatDaysToYMD } from '@/components/calculations';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import ExperienceTab from '@/components/profile/ExperienceTab';
@@ -223,7 +223,14 @@ export default function EmployeeProfile() {
             <Zap className="w-4 h-4 text-indigo-500" />
           </div>
           <p className="text-2xl font-bold text-indigo-900">{employee.bienio_points || 0}</p>
-          <p className="text-xs text-indigo-600 mt-1">Puntos acumulados</p>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs text-indigo-600">Puntos acumulados</p>
+            {employee.total_experience_days > 0 && (
+              <p className="text-[10px] font-medium text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 italic">
+                {formatDaysToYMD(employee.total_experience_days)}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200">

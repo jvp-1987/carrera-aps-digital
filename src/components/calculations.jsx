@@ -244,4 +244,19 @@ export function daysUntilClosure() {
   return Math.ceil((closure - today) / (1000 * 60 * 60 * 24));
 }
 
+export function formatDaysToYMD(totalDays) {
+  if (!totalDays || totalDays <= 0) return '0 días';
+  const years = Math.floor(totalDays / 365);
+  const remainingDaysAfterYears = totalDays % 365;
+  const months = Math.floor(remainingDaysAfterYears / 30);
+  const days = remainingDaysAfterYears % 30;
+
+  const parts = [];
+  if (years > 0) parts.push(`${years} ${years === 1 ? 'año' : 'años'}`);
+  if (months > 0) parts.push(`${months} ${months === 1 ? 'mes' : 'meses'}`);
+  if (days > 0) parts.push(`${days} ${days === 1 ? 'día' : 'días'}`);
+
+  return parts.length > 0 ? parts.join(', ') : '0 días';
+}
+
 export { BIENIO_POINTS_TABLE };

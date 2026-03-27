@@ -47,6 +47,12 @@ function detectDuplicates(periods) {
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const parseNumeric = (v) => {
+  if (v === null || v === undefined) return 0;
+  if (typeof v === 'number') return v;
+  const s = String(v).replace(',', '.').replace(/[^\d.-]/g, '');
+  return parseFloat(s) || 0;
+};
 
 // Helper: Exponential Backoff para mitigar errores 429
 const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
@@ -203,6 +209,87 @@ function HerramientaLimpiezaDias() {
 }
 
 // ── Componente: Auditoría de Solapamientos ─────────────────────
+function HerramientaLimpiezaProfunda({ duplicates, servicePeriods, queryClient }) {
+  const [isCleaning, setIsCleaning] = useState(false);
+  const totalDupes = duplicates.length;
+  const totalAdjusted = servicePeriods.filter(p => (parseNumeric(p.days_count) === 0) && (p.ajustado_por_solapamiento || p.conflict_status === 'Ajustado')).length;
+
+  const handleCleanAll = async () => {
+    if (!window.confirm(`¿Estás seguro de eliminar definitivamente ${totalDupes} duplicados y ${totalAdjusted} registros ya subsanados? Esta acción no se puede deshacer.`)) return;
+    
+    setIsCleaning(true);
+    let deleted = 0;
+    try {
+      // 1. Eliminar Duplicados
+      for (const d of duplicates) {
+        await base44.entities.ServicePeriod.delete(d.duplicate.id);
+        deleted++;
+      }
+
+      // 2. Eliminar Ajustados (Subsanados)
+      const adjusted = servicePeriods.filter(p => 
+        (parseNumeric(p.days_count) === 0) && (p.ajustado_por_solapamiento || p.conflict_status === 'Ajustado')
+      );
+      
+      for (const a of adjusted) {
+        await base44.entities.ServicePeriod.delete(a.id);
+        deleted++;
+      }
+
+      toast.success(`${deleted} registros eliminados exitosamente.`);
+      queryClient.invalidateQueries({ queryKey: ["service-periods-audit"] });
+    } catch (err) {
+      console.error(err);
+      toast.error("Ocurrió un error parcial durante la limpieza.");
+    } finally {
+      setIsCleaning(false);
+    }
+  };
+
+  return (
+    <Card className="border-indigo-100 bg-indigo-50/20">
+      <CardHeader className="pb-3 px-6 pt-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="text-sm font-bold text-indigo-900 flex items-center gap-2 uppercase tracking-tight">
+              <Trash2 className="w-4 h-4" /> Limpieza Profunda de Registros
+            </CardTitle>
+            <p className="text-[10px] text-slate-500 mt-1 uppercase font-semibold">Eliminar definitivamente duplicados y solapamientos ya subsanados</p>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="px-6 font-bold shadow-lg shadow-red-200"
+            disabled={isCleaning || (totalDupes === 0 && totalAdjusted === 0)}
+            onClick={handleCleanAll}
+          >
+            {isCleaning ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                Limpiando...
+              </>
+            ) : (
+              `Eliminar Registros (${totalDupes + totalAdjusted})`
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="px-6 pb-6 pt-0">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white p-3 rounded-lg border border-indigo-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Duplicados Exactos</p>
+            <p className="text-xl font-black text-indigo-900">{totalDupes}</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-indigo-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Subsanados (Sin impacto)</p>
+            <p className="text-xl font-black text-indigo-900">{totalAdjusted}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function LimpiezaPeriodosTab({ employees, servicePeriods }) {
   const queryClient = useQueryClient();
   const [resolving, setResolving] = useState(null);
@@ -249,70 +336,73 @@ function LimpiezaPeriodosTab({ employees, servicePeriods }) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Duplicados */}
-      <Card className="border-orange-100 bg-orange-50/30 h-fit">
-        <CardHeader className="pb-3 border-b border-orange-100">
-          <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
-            <Copy className="w-4 h-4" /> Duplicados Exactos ({duplicates.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 space-y-2">
-          {duplicates.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">No se detectaron duplicados.</p>
-          ) : (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-              {duplicates.map((d, i) => (
-                <div key={i} className="bg-white p-3 rounded-md border border-orange-200 flex justify-between items-center text-xs">
-                  <div>
-                    <p className="font-semibold text-slate-800">{empMap[d.duplicate.employee_id]?.full_name || 'Desconocido'}</p>
-                    <p className="text-slate-500">{d.duplicate.start_date} → {d.duplicate.end_date || '?'}</p>
-                    <p className="text-[10px] text-slate-400 italic">{d.duplicate.institution}</p>
-                  </div>
-                  <Button size="icon" variant="ghost" className="text-red-500 h-8 w-8" onClick={() => handleDeleteDupe(d.duplicate.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Solapamientos */}
-      <Card className="border-red-100 bg-red-50/30 h-fit">
-        <CardHeader className="pb-3 border-b border-red-100">
-          <CardTitle className="text-sm font-bold text-red-800 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> Solapamientos de Fechas ({overlapsResults.length} funcionarios)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 space-y-4">
-          {overlapsResults.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">Sin solapamientos detectados.</p>
-          ) : (
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-              {overlapsResults.slice(0, 10).map((res, i) => (
-                <div key={i} className="bg-white p-3 rounded-md border border-red-200 space-y-2">
-                  <p className="text-sm font-bold text-slate-800 border-b pb-1">{res.emp?.full_name}</p>
-                  {res.overlaps.map((ov, j) => (
-                    <div key={j} className="text-xs bg-red-50/50 p-2 rounded flex justify-between items-center gap-2">
-                      <div className="flex-1">
-                        <p className="text-slate-600"><span className="font-semibold">A:</span> {ov.a.start_date} → {ov.a.end_date} ({ov.a.days_count}d)</p>
-                        <p className="text-red-700 font-medium"><span className="font-semibold">B:</span> {ov.b.start_date} → {ov.b.end_date} (Solapa)</p>
-                      </div>
-                      <Button size="sm" variant="outline" className="h-8 border-red-200 text-red-700 hover:bg-red-100" onClick={() => handleResolveOverlap(ov)} disabled={resolving === ov.b.id}>
-                        {resolving === ov.b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wrench className="w-3.5 h-3.5 mr-1" />}
-                        Subsanar
-                      </Button>
+    <div className="space-y-6">
+      <HerramientaLimpiezaProfunda duplicates={duplicates} servicePeriods={servicePeriods} queryClient={queryClient} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Duplicados */}
+        <Card className="border-orange-100 bg-orange-50/30 h-fit">
+          <CardHeader className="pb-3 border-b border-orange-100">
+            <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
+              <Copy className="w-4 h-4" /> Duplicados Exactos ({duplicates.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-2">
+            {duplicates.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">No se detectaron duplicados.</p>
+            ) : (
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                {duplicates.map((d, i) => (
+                  <div key={i} className="bg-white p-3 rounded-md border border-orange-200 flex justify-between items-center text-xs">
+                    <div>
+                      <p className="font-semibold text-slate-800">{empMap[d.duplicate.employee_id]?.full_name || 'Desconocido'}</p>
+                      <p className="text-slate-500">{d.duplicate.start_date} → {d.duplicate.end_date || '?'}</p>
+                      <p className="text-[10px] text-slate-400 italic">{d.duplicate.institution}</p>
                     </div>
-                  ))}
-                </div>
-              ))}
-              {overlapsResults.length > 10 && <p className="text-[10px] text-slate-400 text-center italic">... y {overlapsResults.length - 10} funcionarios más.</p>}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    <Button size="icon" variant="ghost" className="text-red-500 h-8 w-8" onClick={() => handleDeleteDupe(d.duplicate.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Solapamientos */}
+        <Card className="border-red-100 bg-red-50/30 h-fit">
+          <CardHeader className="pb-3 border-b border-red-100">
+            <CardTitle className="text-sm font-bold text-red-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> Solapamientos de Fechas ({overlapsResults.length} funcionarios)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            {overlapsResults.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">Sin solapamientos detectados.</p>
+            ) : (
+              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+                {overlapsResults.slice(0, 10).map((res, i) => (
+                  <div key={i} className="bg-white p-3 rounded-md border border-red-200 space-y-2">
+                    <p className="text-sm font-bold text-slate-800 border-b pb-1">{res.emp?.full_name}</p>
+                    {res.overlaps.map((ov, j) => (
+                      <div key={j} className="text-xs bg-red-50/50 p-2 rounded flex justify-between items-center gap-2">
+                        <div className="flex-1">
+                          <p className="text-slate-600"><span className="font-semibold">A:</span> {ov.a.start_date} → {ov.a.end_date} ({ov.a.days_count}d)</p>
+                          <p className="text-red-700 font-medium"><span className="font-semibold">B:</span> {ov.b.start_date} → {ov.b.end_date} (Solapa)</p>
+                        </div>
+                        <Button size="sm" variant="outline" className="h-8 border-red-200 text-red-700 hover:bg-red-100" onClick={() => handleResolveOverlap(ov)} disabled={resolving === ov.b.id}>
+                          {resolving === ov.b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wrench className="w-3.5 h-3.5 mr-1" />}
+                          Subsanar
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {overlapsResults.length > 10 && <p className="text-[10px] text-slate-400 text-center italic">... y {overlapsResults.length - 10} funcionarios más.</p>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

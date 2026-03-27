@@ -125,7 +125,7 @@ export default function EmployeeTableView({ employees }) {
                     <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-slate-700 leading-none mb-0.5">{emp.training_points || 0}</span>
+                    <span className="text-xs font-bold text-slate-700 leading-none mb-0.5">{(emp.training_points || 0).toFixed(1)}</span>
                     <span className="text-[9px] text-slate-400 leading-none">Puntos</span>
                   </div>
                 </div>

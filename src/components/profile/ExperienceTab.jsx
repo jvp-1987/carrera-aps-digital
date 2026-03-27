@@ -218,11 +218,12 @@ export default function ExperienceTab({ employee }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-xs text-slate-400 mb-1">Días Efectivos</p>
-            <p className="text-2xl font-bold text-slate-900">{effectiveDays}</p>
-            <p className="text-[10px] text-slate-500 mt-1 uppercase font-semibold">
-              {formatDaysToYMD(effectiveDays)}
-            </p>
+            <div className="flex flex-col items-center">
+              <p className="text-2xl font-bold text-slate-900">{effectiveDays}</p>
+              <p className="text-[10px] text-slate-400 italic mt-0.5 leading-tight px-2">
+                {formatDaysToYMD(effectiveDays)}
+              </p>
+            </div>
           </CardContent>
         </Card>
         <Card>

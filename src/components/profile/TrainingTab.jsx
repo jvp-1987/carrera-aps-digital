@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, GraduationCap, FileUp, Lock, AlertCircle, Pencil, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR } from '@/components/calculations';
+import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR, getMaxTrainingPoints } from '@/components/calculations';
 
 export default function TrainingTab({ employee }) {
   const queryClient = useQueryClient();
@@ -32,11 +32,14 @@ export default function TrainingTab({ employee }) {
   });
 
   const validatedTrainings = trainings.filter(t => t.status === 'Validado');
-  const rawTrainingPoints = validatedTrainings.reduce((s, t) => {
+  const rawSum = validatedTrainings.reduce((s, t) => {
     const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
     return s + pts;
   }, 0);
-  const totalTrainingPoints = Math.round(rawTrainingPoints * 100) / 100;
+  
+  const maxPossible = getMaxTrainingPoints(employee.category, employee.total_experience_days || 0);
+  const totalTrainingPoints = Math.min(maxPossible, Math.round(rawSum * 100) / 100);
+  
   const postitleHours = validatedTrainings.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
   const postitlePct = calculatePostitlePercentage(employee.category, postitleHours);
 
@@ -125,7 +128,10 @@ export default function TrainingTab({ employee }) {
         const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
         return s + pts;
       }, 0);
-      const totalPts = Math.round(rawPts * 100) / 100;
+      const totalPts = Math.min(
+        getMaxTrainingPoints(freshEmployee.category, freshEmployee.total_experience_days || 0),
+        Math.round(rawPts * 100) / 100
+      );
       const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
       const pPct = calculatePostitlePercentage(freshEmployee.category, pHours);
       await base44.entities.Employee.update(freshEmployee.id, {
@@ -212,7 +218,10 @@ export default function TrainingTab({ employee }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-400 mb-1">Pts. Capacitación</p>
-                <p className="text-2xl font-bold text-indigo-600">{totalTrainingPoints.toFixed(1)}</p>
+                <div className="flex items-baseline gap-1">
+                  <p className="text-2xl font-bold text-indigo-600">{totalTrainingPoints.toFixed(1)}</p>
+                  <p className="text-[10px] text-slate-400">/ {maxPossible}</p>
+                </div>
               </div>
               <Button 
                 variant="ghost" 

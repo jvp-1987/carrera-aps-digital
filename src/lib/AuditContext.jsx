@@ -7,7 +7,8 @@ import {
   calculateBienioPoints, 
   calculateNextBienioDate, 
   calculatePostitlePercentage, 
-  calculateTrainingPoints 
+  calculateTrainingPoints,
+  getMaxTrainingPoints 
 } from '@/components/calculations';
 
 const AuditContext = createContext();
@@ -84,7 +85,10 @@ export function AuditProvider({ children }) {
           }, 0);
           const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (parseFloat(t.postitle_hours) || 0), 0);
           const pPct = calculatePostitlePercentage(emp.category, pHours);
-          const totalPts = Math.round((bp + tPts) * 100) / 100;
+          
+          const maxPossible = getMaxTrainingPoints(emp.category, eDays);
+          const finalTrainingPts = Math.min(maxPossible, Math.round(tPts * 100) / 100);
+          const totalPts = Math.round((bp + finalTrainingPts) * 100) / 100;
 
           await safeApiCall(() => base44.entities.Employee.update(emp.id, {
             total_experience_days: eDays,
@@ -92,7 +96,7 @@ export function AuditProvider({ children }) {
             bienios_count: b,
             bienio_points: bp,
             next_bienio_date: nbd,
-            training_points: tPts,
+            training_points: finalTrainingPts,
             postitle_percentage: pPct,
             total_points: totalPts,
           }), 6, 300);

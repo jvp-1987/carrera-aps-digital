@@ -121,14 +121,19 @@ export function calculateTrainingPoints(hours, grade, technicalLevel) {
 }
 
 // ── TABLA DE CAPACITACIÓN COMPLETA (Art. 10°) ───────────────
-// Puntaje máximo acumulado por periodo (1-30), tabla oficial
-// Cat. A y B: incremento de 140 pts/periodo
-// Cat. C, D, E y F: incremento de 115 pts/periodo
-export const MAX_TRAINING_POINTS_AB = 4200;  // 30 × 140
-export const MAX_TRAINING_POINTS_CF = 3450;  // 30 × 115
+// Puntaje máximo ACUMULADO por periodo (Año 1 a 30), tabla oficial
+const TRAINING_ACCUMULATED_TABLE = {
+  AB: [0, 140, 280, 420, 560, 700, 830, 960, 1090, 1220, 1350, 1475, 1600, 1725, 1850, 1975, 2100, 2225, 2350, 2475, 2600, 2725, 2850, 2975, 3100, 3225, 3345, 3465, 3585, 3705, 3825],
+  CDEF: [0, 115, 230, 345, 460, 575, 680, 785, 890, 995, 1100, 1205, 1310, 1415, 1520, 1625, 1727, 1829, 1931, 2033, 2135, 2237, 2339, 2441, 2543, 2645, 2747, 2849, 2951, 3053, 3153]
+};
 
-export function getMaxTrainingPoints(category) {
-  return (category === 'A' || category === 'B') ? MAX_TRAINING_POINTS_AB : MAX_TRAINING_POINTS_CF;
+export function getMaxTrainingPoints(category, totalDays = 0) {
+  const years = Math.floor(totalDays / 365);
+  // Periodo 1 es año 0-1, Periodo 2 es año 1-2, etc. (Tope acumulado al finalizar el año)
+  const period = Math.min(30, Math.max(1, years + 1));
+  const isAB = (category === 'A' || category === 'B');
+  const table = isAB ? TRAINING_ACCUMULATED_TABLE.AB : TRAINING_ACCUMULATED_TABLE.CDEF;
+  return table[period] || table[table.length - 1];
 }
 
 // ── POSTÍTULO (Cat. A y B) ───────────────────────────────────

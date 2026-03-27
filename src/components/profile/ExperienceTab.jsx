@@ -43,7 +43,7 @@ export default function ExperienceTab({ employee }) {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     period_type: '', start_date: '', end_date: '', institution: '',
-    resolution_number: '', days_count: 0,
+    resolution_number: '', days_count: 0, jornada: 'Completa',
   });
 
   // Estado de solapamiento detectado (pendiente de resolución)
@@ -100,7 +100,7 @@ export default function ExperienceTab({ employee }) {
     setEditingId(null);
     setOverlapInfo(null);
     setOverlapDismissed(false);
-    setForm({ period_type: '', start_date: '', end_date: '', institution: '', resolution_number: '', days_count: 0 });
+    setForm({ period_type: '', start_date: '', end_date: '', institution: '', resolution_number: '', days_count: 0, jornada: 'Completa' });
   };
 
   const openEdit = (p) => {
@@ -109,6 +109,7 @@ export default function ExperienceTab({ employee }) {
       period_type: p.period_type || '', start_date: p.start_date || '',
       end_date: p.end_date || '', institution: p.institution || '',
       resolution_number: p.resolution_number || '', days_count: p.days_count || 0,
+      jornada: p.jornada || 'Completa',
     });
     setOverlapInfo(null);
     setOverlapDismissed(false);
@@ -339,6 +340,18 @@ export default function ExperienceTab({ employee }) {
                 )}
 
                 <div>
+                  <Label>Jornada Laboral</Label>
+                  <Select value={form.jornada} onValueChange={v => setForm(p => ({ ...p, jornada: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar jornada" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Completa">Jornada Completa</SelectItem>
+                      <SelectItem value="Media Jornada">Media Jornada</SelectItem>
+                      <SelectItem value="3/4 Jornada">3/4 Jornada</SelectItem>
+                      <SelectItem value="Parcial">Jornada Parcial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label>Institución</Label>
                   <Input value={form.institution} onChange={e => setForm(p => ({ ...p, institution: e.target.value }))} />
                 </div>
@@ -380,6 +393,9 @@ export default function ExperienceTab({ employee }) {
                     <div>
                       <p className="text-sm font-medium">{p.institution || 'APS Panguipulli'}</p>
                       <p className="text-xs text-slate-500">{p.start_date} → {p.end_date || 'Vigente'}</p>
+                      {p.jornada && p.jornada !== 'Completa' && (
+                        <p className="text-xs text-indigo-600 mt-0.5">⏱ {p.jornada}</p>
+                      )}
                       {p.ajustado_por_solapamiento && (
                         <p className="text-xs text-amber-600 mt-0.5">
                           ⚙ Ajustado — fecha original: {p.fecha_original}

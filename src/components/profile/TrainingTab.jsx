@@ -94,13 +94,13 @@ export default function TrainingTab({ employee }) {
       ]);
       const validated = allTrainings.filter(t => t.status === 'Validado' || t.id === training.id);
       const rawPts = validated.reduce((s, t) => {
-        let pts = (t.id === training.id ? (training.calculated_points || 0) : (t.calculated_points || 0));
-        if (pts === 0 && t.hours > 0 && t.grade > 0) {
-          pts = calculateTrainingPoints(parseFloat(t.hours), parseFloat(t.grade), t.technical_level);
-        }
+        const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
         return s + pts;
       }, 0);
-      const totalPts = Math.round(rawPts * 100) / 100;
+      const totalPts = Math.min(
+        getMaxTrainingPoints(freshEmployee.category, freshEmployee.total_experience_days || 0),
+        Math.round(rawPts * 100) / 100
+      );
       const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
       const pPct = calculatePostitlePercentage(freshEmployee.category, pHours);
       await base44.entities.Employee.update(freshEmployee.id, {

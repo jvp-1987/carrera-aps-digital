@@ -36,7 +36,7 @@ function RecalcularPuntajesMasivo({ employees, servicePeriods, trainings, leaves
   
   const handleRecalculate = async () => {
     if (!confirm('¿Seguro que deseas recalcular la experiencia y capacitación de TODOS los funcionarios? Esto puede tomar varios minutos. Podrás seguir navegando por la aplicación mientras se procesa.')) return;
-    startAudit(employees, servicePeriods, trainings, leaves);
+    startAudit(employees);
   };
 
   return (

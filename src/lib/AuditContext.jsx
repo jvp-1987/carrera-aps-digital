@@ -11,7 +11,7 @@ import {
   getMaxTrainingPoints 
 } from '@/components/calculations';
 
-const AuditContext = createContext();
+const AuditContext = createContext(null);
 
 const safeApiCall = async (apiFn, maxRetries = 5, baseDelay = 400) => {
   let attempt = 0;
@@ -38,7 +38,7 @@ export function AuditProvider({ children }) {
   const [progress, setProgress] = useState(0);
   const [stats, setStats] = useState(null);
 
-  const startAudit = useCallback(async (employees, servicePeriods, trainings, leaves) => {
+  const startAudit = useCallback(async (employees) => {
     if (isRunning) return;
     
     setIsRunning(true);
@@ -46,40 +46,26 @@ export function AuditProvider({ children }) {
     setStats(null);
     let ok = 0, errors = 0;
     
-    // Agrupar para rapidez
-    const periodMap = {};
-    servicePeriods.forEach(p => {
-      if (!periodMap[p.employee_id]) periodMap[p.employee_id] = [];
-      periodMap[p.employee_id].push(p);
-    });
-    const trainingMap = {};
-    trainings.forEach(t => {
-      if (!trainingMap[t.employee_id]) trainingMap[t.employee_id] = [];
-      trainingMap[t.employee_id].push(t);
-    });
-    const leaveMap = {};
-    leaves.forEach(l => {
-      if (!leaveMap[l.employee_id]) leaveMap[l.employee_id] = [];
-      leaveMap[l.employee_id].push(l);
-    });
-
     // Iniciar loop de fondo
     (async () => {
       for (let i = 0; i < employees.length; i++) {
         const emp = employees[i];
         try {
-          const empPeriods = periodMap[emp.id] || [];
-          const empLeaves = leaveMap[emp.id] || [];
-          const empTrainings = trainingMap[emp.id] || [];
-
-          const tLeave = empLeaves.reduce((s, l) => s + parseInt(l.days_count || 0), 0);
+          // Obtener data fresca para cada empleado (Evita truncamiento de datos masivos)
+          const [empPeriods, empLeaves, empTrainings] = await Promise.all([
+            safeApiCall(() => base44.entities.ServicePeriod.filter({ employee_id: emp.id })),
+            safeApiCall(() => base44.entities.LeaveWithoutPay.filter({ employee_id: emp.id })),
+            safeApiCall(() => base44.entities.Training.filter({ employee_id: emp.id }))
+          ]);
+          
+          const tLeave = empLeaves.reduce((s, l) => s + (parseInt(l.days_count) || 0), 0);
           const eDays = calculateEffectiveDays(empPeriods, tLeave);
           const b = calculateBienios(eDays);
           const bp = calculateBienioPoints(emp.category, b);
           const nbd = calculateNextBienioDate(empPeriods, tLeave, b);
 
           const validated = empTrainings.filter(t => t.status === 'Validado');
-          const tPts = validated.reduce((s, t) => {
+          const rawSum = validated.reduce((s, t) => {
             const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
             return s + pts;
           }, 0);
@@ -87,7 +73,7 @@ export function AuditProvider({ children }) {
           const pPct = calculatePostitlePercentage(emp.category, pHours);
           
           const maxPossible = getMaxTrainingPoints(emp.category, eDays);
-          const finalTrainingPts = Math.min(maxPossible, Math.round(tPts * 100) / 100);
+          const finalTrainingPts = Math.min(maxPossible, Math.round(rawSum * 100) / 100);
           const totalPts = Math.round((bp + finalTrainingPts) * 100) / 100;
 
           await safeApiCall(() => base44.entities.Employee.update(emp.id, {

@@ -223,14 +223,7 @@ export default function EmployeeProfile() {
             <Zap className="w-4 h-4 text-indigo-500" />
           </div>
           <p className="text-2xl font-bold text-indigo-900">{employee.bienio_points || 0}</p>
-          <div className="flex items-center justify-between mt-1">
-            <p className="text-xs text-indigo-600">Puntos acumulados</p>
-            {employee.total_experience_days > 0 && (
-              <p className="text-[10px] font-medium text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 italic">
-                {formatDaysToYMD(employee.total_experience_days)}
-              </p>
-            )}
-          </div>
+          <p className="text-xs text-indigo-600 mt-1">Puntos acumulados</p>
         </div>
 
         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200">

@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Download, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ── Normalización ──────────────────────────────────────────────
@@ -78,7 +78,8 @@ function parseExcelRow(row) {
     rut:           get('rut', 'run', 'cedula', 'id'),
     birth_date:    getDate('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fecha_nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nacimiento', 'f.nacimiento', 'dob', 'date of birth'),
     category:      get('categoria', 'categoría', 'cat', 'estamento', 'nivel cat'),
-    profession:    get('profesion', 'profesión', 'titulo', 'título', 'cargo', 'especialidad', 'prof'),
+    position:      get('cargo', 'puesto', 'especialidad', 'funcion', 'función'),
+    profession:    get('profesion', 'profesión', 'titulo', 'título', 'prof'),
     department:    get('establecimiento', 'departamento', 'unidad', 'cesfam', 'consultorio', 'lugar de trabajo', 'centro'),
     nationality:   get('nacionalidad', 'nacion', 'pais', 'país', 'nacionalidad funcionario', 'nationality'),
     contract_type: get('tipo contrato', 'contrato', 'tipo de contrato', 'tipo_contrato', 'calidad juridica', 'calidad jurídica', 'vinculo'),
@@ -116,7 +117,7 @@ function compareEmployee(excelRow, sysEmployee) {
 }
 
 // ── Subcomponente: Fila de resultado ──────────────────────────
-function ResultRow({ result, onApply, isApplying }) {
+function ResultRow({ result, onApply, isApplying, onCreate, isCreating }) {
   const { excelRow, employee, diffs, status } = result;
   const hasDiffs = Object.keys(diffs).length > 0;
 
@@ -144,7 +145,15 @@ function ResultRow({ result, onApply, isApplying }) {
         </div>
         <div className="flex items-center gap-2">
           {status === 'not_found' && (
-            <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">No encontrado en sistema</Badge>
+            <Button
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white h-7 text-xs"
+              disabled={isCreating}
+              onClick={() => onCreate(excelRow)}
+            >
+              {isCreating ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : <UserPlus className="w-3 h-3 mr-1" />}
+              Agregar al sistema
+            </Button>
           )}
           {status === 'ok' && !hasDiffs && (
             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">✓ Sin diferencias</Badge>
@@ -187,6 +196,7 @@ export default function ValidacionExcel() {
   const fileRef = useRef(null);
   const [results, setResults] = useState(null);
   const [applyingId, setApplyingId] = useState(null);
+  const [creatingIds, setCreatingIds] = useState(new Set());
   const [filter, setFilter] = useState('all'); // all | diffs | ok | not_found
 
   const { data: employees = [], isLoading, refetch } = useQuery({
@@ -262,6 +272,62 @@ export default function ValidacionExcel() {
       toast.error(`Error al aplicar la corrección: ${err?.message || 'Error desconocido'}`);
     }
     setApplyingId(null);
+  };
+
+  const handleCreate = async (excelRow) => {
+    const rutKey = normRut(excelRow.rut);
+    setCreatingIds(prev => new Set(prev).add(rutKey));
+    try {
+      await base44.entities.Employee.create({
+        ...excelRow,
+        status: 'Activo',
+        current_level: 15,
+        total_experience_days: 0,
+        total_leave_days: 0,
+        bienios_count: 0,
+        bienio_points: 0,
+        training_points: 0,
+        postitle_percentage: 0,
+        total_points: 0,
+        nationality: excelRow.nationality || 'Chilena',
+      });
+      toast.success(`Funcionario ${excelRow.full_name} creado`);
+      
+      // Forzar refetch para actualizar la lista de empleados y recalculamos resultados
+      const freshResult = await refetch();
+      const freshEmployees = freshResult.data ?? [];
+      const byRut = {};
+      freshEmployees.forEach(e => { byRut[normRut(e.rut)] = e; });
+      
+      setResults(prev => (prev || []).map(r => {
+        const normR = normRut(r.excelRow.rut);
+        if (normR === rutKey) {
+          const emp = byRut[normR];
+          return { ...r, employee: emp, status: 'ok', diffs: {} };
+        }
+        return r;
+      }));
+    } catch (err) {
+      console.error('Error al crear funcionario:', err);
+      toast.error(`Error al crear funcionario: ${err?.message || 'Error desconocido'}`);
+    }
+    setCreatingIds(prev => {
+      const next = new Set(prev);
+      next.delete(rutKey);
+      return next;
+    });
+  };
+
+  const handleCreateAll = async () => {
+    const notFound = (results || []).filter(r => r.status === 'not_found');
+    if (!notFound.length) { toast.info('No hay funcionarios para agregar'); return; }
+    if (!window.confirm(`¿Deseas agregar los ${notFound.length} funcionarios nuevos al sistema automáticamente?`)) return;
+    
+    // Procesar en serie para no saturar el servidor y tener feedback
+    for (const r of notFound) {
+      await handleCreate(r.excelRow);
+    }
+    toast.success('Importación finalizada');
   };
 
   const handleApplyAll = async () => {
@@ -369,6 +435,12 @@ export default function ValidacionExcel() {
 
           {/* Acciones */}
           <div className="flex gap-2 flex-wrap">
+            {stats.not_found > 0 && (
+              <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" onClick={handleCreateAll}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Agregar todos los faltantes ({stats.not_found})
+              </Button>
+            )}
             {stats.diffs > 0 && (
               <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={handleApplyAll}>
                 <RefreshCw className="w-4 h-4 mr-2" />
@@ -398,6 +470,8 @@ export default function ValidacionExcel() {
                 result={result}
                 onApply={handleApply}
                 isApplying={applyingId === result.employee?.id}
+                onCreate={handleCreate}
+                isCreating={creatingIds.has(normRut(result.excelRow.rut))}
               />
             ))}
             {filtered.length === 0 && (

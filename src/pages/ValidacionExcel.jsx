@@ -227,6 +227,7 @@ export default function ValidacionExcel() {
   const [applyingId, setApplyingId] = useState(null);
   const [creatingIds, setCreatingIds] = useState(new Set());
   const [filter, setFilter] = useState('all'); // all | diffs | ok | not_found
+  const [isDragging, setIsDragging] = useState(false);
 
   const { data: employees = [], isLoading, refetch } = useQuery({
     queryKey: ['employees-all-validation'],
@@ -239,46 +240,68 @@ export default function ValidacionExcel() {
 
   const [loadingFile, setLoadingFile] = useState(false);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
+  const processFile = async (file) => {
     if (!file) return;
     setLoadingFile(true);
-    // Forzar datos frescos desde el servidor antes de comparar
-    const freshResult = await refetch();
-    const freshEmployees = freshResult.data ?? employees;
+    try {
+      // Forzar datos frescos desde el servidor antes de comparar
+      const freshResult = await refetch();
+      const freshEmployees = freshResult.data ?? employees;
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const wb = XLSX.read(ev.target.result, { type: 'binary', cellDates: true });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const wb = XLSX.read(ev.target.result, { type: 'binary', cellDates: true });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
-      if (rows.length > 0) {
-        console.log('[DEBUG] Columnas detectadas en el Excel:', Object.keys(rows[0]));
-      }
+          if (rows.length > 0) {
+            console.log('[DEBUG] Columnas detectadas en el Excel:', Object.keys(rows[0]));
+          }
 
-      const byRut = {};
-      freshEmployees.forEach(e => { byRut[normRut(e.rut)] = e; });
+          const byRut = {};
+          freshEmployees.forEach(e => { byRut[normRut(e.rut)] = e; });
 
-      const mapped = rows
-        .map(row => parseExcelRow(row))
-        .filter(entry => entry.parsed.full_name || entry.parsed.rut)
-        .map(entry => {
-          const excelRow = entry.parsed;
-          const normalized = normRut(excelRow.rut);
-          const employee = byRut[normalized];
-          if (!employee) return { excelRow, employee: null, diffs: {}, status: 'not_found' };
-          const diffs = compareEmployee(excelRow, employee);
-          return { excelRow, employee, diffs, status: Object.keys(diffs).length > 0 ? 'diffs' : 'ok' };
-        });
+          const mapped = rows
+            .map(row => parseExcelRow(row))
+            .filter(entry => entry.parsed.full_name || entry.parsed.rut)
+            .map(entry => {
+              const excelRow = entry.parsed;
+              const normalized = normRut(excelRow.rut);
+              const employee = byRut[normalized];
+              if (!employee) return { excelRow, employee: null, diffs: {}, status: 'not_found' };
+              const diffs = compareEmployee(excelRow, employee);
+              return { excelRow, employee, diffs, status: Object.keys(diffs).length > 0 ? 'diffs' : 'ok' };
+            });
 
-      setResults(mapped);
+          setResults(mapped);
+          setLoadingFile(false);
+          toast.success(`${mapped.length} registros procesados con datos actualizados`);
+        } catch (err) {
+          console.error('Error al procesar Excel:', err);
+          toast.error('Error al procesar el archivo Excel');
+          setLoadingFile(false);
+        }
+      };
+      reader.onerror = () => setLoadingFile(false);
+      reader.readAsBinaryString(file);
+    } catch (err) {
+      console.error('Error al obtener datos frescos:', err);
+      toast.error('Error al sincronizar con el servidor');
       setLoadingFile(false);
-      toast.success(`${mapped.length} registros procesados con datos actualizados`);
-    };
-    reader.onerror = () => setLoadingFile(false);
-    reader.readAsBinaryString(file);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    processFile(e.target.files?.[0]);
     e.target.value = '';
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   };
 
   const handleApply = async (employeeId, diffs) => {
@@ -412,34 +435,45 @@ export default function ValidacionExcel() {
         <p className="text-sm text-slate-500 mt-1">Carga tu planilla maestra y el sistema comparará automáticamente los datos ingresados.</p>
       </div>
 
-      {/* Upload */}
-      <Card className="border-indigo-100 bg-indigo-50/30">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="flex-1">
-              <p className="font-semibold text-slate-800 mb-1">Cargar Planilla Excel</p>
-              <p className="text-xs text-slate-500">
-                La primera fila debe contener encabezados como: <strong>RUT, Nombre, Establecimiento, Categoría, Profesión, Nacionalidad, Tipo Contrato, Fecha Nacimiento</strong>.
-              </p>
+      {/* Upload & Drag Zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={onDrop}
+      >
+        <Card className={`border-dashed border-2 transition-all ${isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-indigo-100 bg-indigo-50/30'}`}>
+          <CardContent className="p-10">
+            <div className="flex flex-col items-center justify-center text-center gap-4">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors ${isDragging ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-600'}`}>
+                <Upload className={`w-8 h-8 ${isDragging ? 'animate-bounce' : ''}`} />
+              </div>
+              <div className="max-w-md">
+                <p className="text-lg font-bold text-slate-800">
+                  {isDragging ? '¡Suelta el archivo aquí!' : 'Arrastra tu planilla o haz clic para subir'}
+                </p>
+                <p className="text-sm text-slate-500 mt-1">
+                  El sistema detectará automáticamente RUT, Nombre, Establecimiento, Categoría, Profesión, Nacionalidad y Fechas.
+                </p>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} className="hidden" />
+                <Button
+                  className="bg-indigo-600 hover:bg-indigo-700 font-semibold px-6"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={isLoading || loadingFile}
+                >
+                  {loadingFile
+                    ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Procesando...</>
+                    : isLoading
+                    ? 'Preparando sistema...'
+                    : <><FileSpreadsheet className="w-4 h-4 mr-2" />Seleccionar Archivo</>
+                  }
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} className="hidden" />
-              <Button
-                className="bg-indigo-600 hover:bg-indigo-700"
-                onClick={() => fileRef.current?.click()}
-                disabled={isLoading || loadingFile}
-              >
-                {loadingFile
-                  ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Sincronizando BD...</>
-                  : isLoading
-                  ? 'Cargando sistema...'
-                  : <><Upload className="w-4 h-4 mr-2" />Seleccionar Archivo</>
-                }
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Resultados */}
       {stats && (

@@ -129,6 +129,21 @@ function parseExcelRow(row) {
   return { parsed, columnsFound };
 }
 
+// Capitaliza correctamente un string (primera letra mayúscula por palabra)
+function toTitleCase(str) {
+  if (!str) return str;
+  return String(str).trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Obtiene el valor de guardado real para cada campo (formato correcto para la BD)
+function getRealValue(fieldKey, rawExcel) {
+  if (fieldKey === 'birth_date') return toISODate(rawExcel); // ISO YYYY-MM-DD
+  if (fieldKey === 'nationality') return toTitleCase(String(rawExcel).trim()); // "Chilena"
+  if (fieldKey === 'position') return String(rawExcel).trim(); // original
+  if (fieldKey === 'profession') return String(rawExcel).trim(); // original
+  return String(rawExcel).trim();
+}
+
 // ── Lógica de comparación ──────────────────────────────────────
 function compareEmployee(excelRow, sysEmployee) {
   const diffs = {};
@@ -138,21 +153,15 @@ function compareEmployee(excelRow, sysEmployee) {
     const excelVal = field.normalize(rawExcel);
     const sysVal   = field.normalize(rawSys);
 
-    // DEBUG: Solo loggear si son campos problemáticos
-    if (field.key === 'birth_date' || field.key === 'nationality') {
-      console.log(`[DEBUG] Comparando ${field.key} para ${sysEmployee?.full_name}:`);
-      console.log(`  Excel: "${rawExcel}" -> normalizado: "${excelVal}"`);
-      console.log(`  Sistema: "${rawSys}" -> normalizado: "${sysVal}"`);
-    }
-
     if (excelVal && sysVal && excelVal !== sysVal) {
-      // Guardamos tanto el valor real (ISO) para el patch como el display para el usuario
+      const realValue    = getRealValue(field.key, rawExcel);
       const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : String(rawExcel).trim();
       const displaySys   = field.key === 'birth_date' ? formatToDMY(sysVal)   : String(rawSys).trim();
-      diffs[field.key] = { excel: displayExcel, system: displaySys, raw: excelVal };
+      diffs[field.key] = { excel: displayExcel, system: displaySys, raw: realValue };
     } else if (excelVal && !sysVal) {
+      const realValue    = getRealValue(field.key, rawExcel);
       const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : String(rawExcel).trim();
-      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true, raw: excelVal };
+      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true, raw: realValue };
     }
   }
   return diffs;
@@ -382,7 +391,11 @@ export default function ValidacionExcel() {
     try {
       await base44.entities.Employee.create({
         ...excelRow,
-        rut: normRut(excelRow.rut), // Normalizamos RUT SIEMPRE al crear para el sistema
+        rut: normRut(excelRow.rut),
+        birth_date: excelRow.birth_date ? toISODate(excelRow.birth_date) : undefined,
+        nationality: excelRow.nationality ? toTitleCase(String(excelRow.nationality).trim()) : 'Chilena',
+        position: excelRow.position ? String(excelRow.position).trim() : undefined,
+        profession: excelRow.profession ? String(excelRow.profession).trim() : undefined,
         status: 'Activo',
         current_level: 15,
         total_experience_days: 0,
@@ -392,7 +405,6 @@ export default function ValidacionExcel() {
         training_points: 0,
         postitle_percentage: 0,
         total_points: 0,
-        nationality: excelRow.nationality || 'Chilena',
       });
       toast.success(`Funcionario ${excelRow.full_name} creado`);
       

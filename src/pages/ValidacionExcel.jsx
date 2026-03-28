@@ -143,13 +143,13 @@ function compareEmployee(excelRow, sysEmployee) {
     }
 
     if (excelVal && sysVal && excelVal !== sysVal) {
-      // Muestra la fecha ya formateada como DD/MM/YYYY para claridad
+      // Guardamos tanto el valor real (ISO) para el patch como el display para el usuario
       const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : String(rawExcel).trim();
       const displaySys   = field.key === 'birth_date' ? formatToDMY(sysVal)   : String(rawSys).trim();
-      diffs[field.key] = { excel: displayExcel, system: displaySys };
+      diffs[field.key] = { excel: displayExcel, system: displaySys, raw: excelVal };
     } else if (excelVal && !sysVal) {
       const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : String(rawExcel).trim();
-      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true };
+      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true, raw: excelVal };
     }
   }
   return diffs;
@@ -317,8 +317,8 @@ export default function ValidacionExcel() {
   const handleApply = async (employeeId, diffs) => {
     setApplyingId(employeeId);
     const patch = {};
-    for (const [key, { excel }] of Object.entries(diffs)) {
-      patch[key] = excel;
+    for (const [key, { raw }] of Object.entries(diffs)) {
+      patch[key] = raw;
     }
     try {
       if (!employeeId) throw new Error('ID de funcionario no válido');

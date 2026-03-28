@@ -10,11 +10,32 @@ function normalizeRUT(rut) {
   return (rut || '').toString().replace(/\./g, '').replace(/,/g, '').replace(/\s/g, '').trim().toUpperCase();
 }
 
+function normalizeDateString(dateStr) {
+  if (!dateStr) return '';
+  const str = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  if (/^\d+$/.test(str)) {
+    const num = parseInt(str);
+    if (num > 0 && num < 100000) {
+      const date = new Date((num - 25569) * 86400 * 1000);
+      return date.toISOString().split('T')[0];
+    }
+  }
+  return str;
+}
+
 async function importEmployee(emp, rutMap) {
   const payload = {
     rut: emp.rut, full_name: emp.full_name, category: emp.category,
     current_level: emp.current_level, position: emp.position || '',
     bienios_count: emp.bienios_count || 0, total_points: emp.total_points || 0,
+    birth_date: normalizeDateString(emp.fecha_nacimiento),
+    nationality: emp.nationality || 'Chilena',
     status: 'Activo',
   };
 
@@ -22,13 +43,15 @@ async function importEmployee(emp, rutMap) {
   if (rutMap[emp.rut]) {
     await base44.entities.Employee.update(rutMap[emp.rut].id, payload);
     savedEmp = { ...rutMap[emp.rut], ...payload };
-    const [oldPeriods, oldTrainings] = await Promise.all([
+    const [oldPeriods, oldTrainings, oldLeaves] = await Promise.all([
       base44.entities.ServicePeriod.filter({ employee_id: savedEmp.id }),
       base44.entities.Training.filter({ employee_id: savedEmp.id }),
+      base44.entities.LeaveWithoutPay.filter({ employee_id: savedEmp.id }),
     ]);
     await Promise.all([
       ...oldPeriods.map(p => base44.entities.ServicePeriod.delete(p.id)),
       ...oldTrainings.map(t => base44.entities.Training.delete(t.id)),
+      ...oldLeaves.map(l => base44.entities.LeaveWithoutPay.delete(l.id)),
     ]);
   } else {
     savedEmp = await base44.entities.Employee.create(payload);
@@ -41,7 +64,7 @@ async function importEmployee(emp, rutMap) {
     if (!start || !end) return null;
     try {
       const s = new Date(start), e = new Date(end);
-      const d = Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
+      const d = Math.floor((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       return d > 0 ? d : null;
     } catch { return null; }
   };
@@ -73,6 +96,16 @@ async function importEmployee(emp, rutMap) {
   await Promise.all([
     periodosValidos.length > 0 ? base44.entities.ServicePeriod.bulkCreate(periodosValidos) : Promise.resolve(),
     capacitacionesValidas.length > 0 ? base44.entities.Training.bulkCreate(capacitacionesValidas) : Promise.resolve(),
+    (emp.permisos || []).length > 0 ? base44.entities.LeaveWithoutPay.bulkCreate(
+      emp.permisos.filter(p => p.start_date).map(p => ({
+        employee_id: savedEmp.id,
+        start_date: p.start_date,
+        end_date: p.end_date || p.start_date,
+        days_count: p.days_count || 1,
+        reason: p.resolution_number ? `Excel: ${p.resolution_number}` : 'Carga masiva Excel',
+        resolution_number: p.resolution_number || '',
+      }))
+    ) : Promise.resolve(),
   ]);
 }
 

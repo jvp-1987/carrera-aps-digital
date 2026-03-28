@@ -174,17 +174,25 @@ export default function ValidacionExcel() {
   const [applyingId, setApplyingId] = useState(null);
   const [filter, setFilter] = useState('all'); // all | diffs | ok | not_found
 
-  const { data: employees = [], isLoading } = useQuery({
+  const { data: employees = [], isLoading, refetch } = useQuery({
     queryKey: ['employees-all-validation'],
     queryFn: () => base44.entities.Employee.list('-created_date', 2000),
+    staleTime: 0, // siempre considerar datos desactualizados
   });
 
   // Nota: usamos base44.entities.Employee.update directamente en handleApply
   // siguiendo el mismo patrón que EmployeeProfile.jsx
 
-  const handleFileChange = (e) => {
+  const [loadingFile, setLoadingFile] = useState(false);
+
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setLoadingFile(true);
+    // Forzar datos frescos desde el servidor antes de comparar
+    const freshResult = await refetch();
+    const freshEmployees = freshResult.data ?? employees;
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const wb = XLSX.read(ev.target.result, { type: 'binary', cellDates: true });
@@ -192,7 +200,7 @@ export default function ValidacionExcel() {
       const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
       const byRut = {};
-      employees.forEach(e => { byRut[normRut(e.rut)] = e; });
+      freshEmployees.forEach(e => { byRut[normRut(e.rut)] = e; });
 
       const mapped = rows
         .map(row => parseExcelRow(row))
@@ -206,8 +214,10 @@ export default function ValidacionExcel() {
         });
 
       setResults(mapped);
-      toast.success(`${mapped.length} registros procesados`);
+      setLoadingFile(false);
+      toast.success(`${mapped.length} registros procesados con datos actualizados`);
     };
+    reader.onerror = () => setLoadingFile(false);
     reader.readAsBinaryString(file);
     e.target.value = '';
   };
@@ -301,10 +311,14 @@ export default function ValidacionExcel() {
               <Button
                 className="bg-indigo-600 hover:bg-indigo-700"
                 onClick={() => fileRef.current?.click()}
-                disabled={isLoading}
+                disabled={isLoading || loadingFile}
               >
-                <Upload className="w-4 h-4 mr-2" />
-                {isLoading ? 'Cargando sistema...' : 'Seleccionar Archivo'}
+                {loadingFile
+                  ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Sincronizando BD...</>
+                  : isLoading
+                  ? 'Cargando sistema...'
+                  : <><Upload className="w-4 h-4 mr-2" />Seleccionar Archivo</>
+                }
               </Button>
             </div>
           </div>

@@ -18,11 +18,31 @@ function normRut(v) {
   return (v ?? '').toString().replace(/\./g, '').replace(/-/g, '').replace(/\s/g, '').toUpperCase();
 }
 
+// Convierte cualquier valor de fecha a formato 'YYYY-MM-DD'
+function toISODate(v) {
+  if (!v && v !== 0) return '';
+  // Si es objeto Date (xlsx con cellDates:true)
+  if (v instanceof Date) {
+    const y = v.getFullYear();
+    const m = String(v.getMonth() + 1).padStart(2, '0');
+    const d = String(v.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(v).trim();
+  // Formato DD/MM/YYYY o DD-MM-YYYY
+  const dmy = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+  // Formato YYYY-MM-DD ya correcto
+  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymd) return s;
+  return s;
+}
+
 // ── Campos a comparar ─────────────────────────────────────────
 const COMPARE_FIELDS = [
   { key: 'full_name',      label: 'Nombre',           normalize: norm },
   { key: 'rut',            label: 'RUT',              normalize: normRut },
-  { key: 'birth_date',     label: 'Fecha Nacimiento', normalize: norm },
+  { key: 'birth_date',     label: 'Fecha Nacimiento', normalize: toISODate },
   { key: 'category',       label: 'Categoría',        normalize: norm },
   { key: 'profession',     label: 'Profesión',        normalize: norm },
   { key: 'department',     label: 'Establecimiento',  normalize: norm },
@@ -32,22 +52,31 @@ const COMPARE_FIELDS = [
 
 // ── Intenta mapear columnas del Excel al esquema interno ───────
 function parseExcelRow(row) {
-  const get = (...keys) => {
+  const getRaw = (...keys) => {
     for (const k of keys) {
       const found = Object.keys(row).find(col => norm(col) === norm(k));
-      if (found !== undefined && row[found] !== undefined && row[found] !== '') return String(row[found]).trim();
+      if (found !== undefined && row[found] !== undefined && row[found] !== '') return row[found];
     }
     return '';
   };
+  const get = (...keys) => {
+    const raw = getRaw(...keys);
+    return raw === '' ? '' : String(raw).trim();
+  };
+  const getDate = (...keys) => {
+    const raw = getRaw(...keys);
+    if (raw === '') return '';
+    return toISODate(raw);
+  };
   return {
-    full_name:     get('nombre', 'nombre completo', 'funcionario', 'nombres'),
+    full_name:     get('nombre', 'nombre completo', 'funcionario', 'nombres', 'apellidos y nombres'),
     rut:           get('rut', 'run'),
-    birth_date:    get('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fecha_nacimiento'),
-    category:      get('categoria', 'categoría', 'cat'),
-    profession:    get('profesion', 'profesión', 'titulo', 'título'),
-    department:    get('establecimiento', 'departamento', 'unidad', 'cesfam', 'consultorio'),
-    nationality:   get('nacionalidad'),
-    contract_type: get('tipo contrato', 'contrato', 'tipo de contrato', 'tipo_contrato'),
+    birth_date:    getDate('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fecha_nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nacimiento', 'f.nacimiento'),
+    category:      get('categoria', 'categoría', 'cat', 'estamento'),
+    profession:    get('profesion', 'profesión', 'titulo', 'título', 'cargo', 'especialidad'),
+    department:    get('establecimiento', 'departamento', 'unidad', 'cesfam', 'consultorio', 'lugar de trabajo'),
+    nationality:   get('nacionalidad', 'nacion', 'pais', 'país', 'nacionalidad funcionario'),
+    contract_type: get('tipo contrato', 'contrato', 'tipo de contrato', 'tipo_contrato', 'calidad juridica', 'calidad jurídica'),
   };
 }
 
@@ -55,12 +84,17 @@ function parseExcelRow(row) {
 function compareEmployee(excelRow, sysEmployee) {
   const diffs = {};
   for (const field of COMPARE_FIELDS) {
-    const excelVal = field.normalize(excelRow[field.key] ?? '');
-    const sysVal   = field.normalize(sysEmployee?.[field.key] ?? '');
+    const rawExcel = excelRow[field.key] ?? '';
+    const rawSys   = sysEmployee?.[field.key] ?? '';
+    const excelVal = field.normalize(rawExcel);
+    const sysVal   = field.normalize(rawSys);
     if (excelVal && sysVal && excelVal !== sysVal) {
-      diffs[field.key] = { excel: excelRow[field.key], system: sysEmployee[field.key] };
+      // Muestra la fecha ya normalizada como ISO para claridad
+      const displayExcel = field.key === 'birth_date' ? excelVal : String(rawExcel).trim();
+      diffs[field.key] = { excel: displayExcel, system: String(rawSys).trim() };
     } else if (excelVal && !sysVal) {
-      diffs[field.key] = { excel: excelRow[field.key], system: '(vacío)', missing: true };
+      const displayExcel = field.key === 'birth_date' ? excelVal : String(rawExcel).trim();
+      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true };
     }
   }
   return diffs;

@@ -310,24 +310,24 @@ function parseCarreraSheet(sheet, sheetName) {
   };
 
   const rut = normalizeRUT(getKV('rut'));
-  const cargo = getKV('cargo');
-  const profesion = getKV('profesi');
+  const position = getKV('cargo', 'puesto', 'especialidad', 'funcion', 'función', 'profesion', 'profesión', ' Profesión');
+  const profession = getKV('profesion', 'profesión', ' Profesión', 'titulo', 'título', 'prof', 'cargo', 'puesto');
   const universidad = getKV('universidad');
-  const fechaNacimiento = getKV('fecha nacimiento', 'nacimiento');
-  const nacionalidad = getKV('nacionalidad', 'pais', 'país', 'nacion', 'nación');
+  const birth_date = getKV('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nac', 'f. nac');
+  const nationality = getKV('nacionalidad', 'pais', 'país', 'nacion', 'nación', 'nac.', 'pais de origen');
 
   return {
     full_name: (fullNameFromSheet || sheetName).trim(),
     rut,
-    position: cargo,
+    position,
     category: headerData.category,
     current_level: headerData.current_level,
     bienios_count: headerData.bienios_count,
     total_points: headerData.total_points,
-    profesion,
+    profession,
     universidad,
-    fecha_nacimiento: fechaNacimiento,
-    nationality: normalizeNationality(nacionalidad),
+    birth_date,
+    nationality: normalizeNationality(nationality),
     experiencia: experienciaRows,
     capacitacion: capacitacionRows,
     permisos: permisosRows,

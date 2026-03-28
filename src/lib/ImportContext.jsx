@@ -40,11 +40,20 @@ async function importEmployee(emp, rutMap) {
   const payload = {
     rut: emp.rut, full_name: emp.full_name, category: emp.category,
     current_level: emp.current_level, position: emp.position || '',
+    profession: emp.profession || '',
     bienios_count: emp.bienios_count || 0, total_points: emp.total_points || 0,
-    birth_date: normalizeDateString(emp.fecha_nacimiento),
+    birth_date: normalizeDateString(emp.birth_date),
     nationality: normalizeNationality(emp.nationality),
     status: 'Activo',
   };
+
+  console.log('[DEBUG] Importando funcionario:', {
+    nombre: payload.full_name,
+    nacimiento: payload.birth_date,
+    nacionalidad: payload.nationality,
+    cargo: payload.position,
+    profesion: payload.profession
+  });
 
   let savedEmp;
   if (rutMap[emp.rut]) {

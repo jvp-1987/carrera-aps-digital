@@ -83,6 +83,7 @@ const COMPARE_FIELDS = [
   { key: 'rut',            label: 'RUT',              normalize: normRut },
   { key: 'birth_date',     label: 'Fecha Nacimiento', normalize: toISODate },
   { key: 'category',       label: 'Categoría',        normalize: norm },
+  { key: 'position',       label: 'Cargo',            normalize: norm },
   { key: 'profession',     label: 'Profesión',        normalize: norm },
   { key: 'department',     label: 'Establecimiento',  normalize: norm },
   { key: 'nationality',    label: 'Nacionalidad',     normalize: val => norm(val, true) },
@@ -116,12 +117,12 @@ function parseExcelRow(row) {
   const parsed = {
     full_name:     get('nombre', 'nombre completo', 'funcionario', 'nombres', 'apellidos y nombres', 'nombre_completo'),
     rut:           get('rut', 'run', 'cedula', 'id'),
-    birth_date:    getDate('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fecha_nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nacimiento', 'f.nacimiento', 'dob', 'date of birth'),
+    birth_date:    getDate('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fecha_nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nacimiento', 'f.nacimiento', 'fec. nac', 'f. nac', 'dob', 'date of birth'),
     category:      get('categoria', 'categoría', 'cat', 'estamento', 'nivel cat'),
-    position:      get('cargo', 'puesto', 'especialidad', 'funcion', 'función'),
-    profession:    get('profesion', 'profesión', 'titulo', 'título', 'prof'),
+    position:      get('cargo', 'puesto', 'especialidad', 'funcion', 'función', 'profesion', 'profesión', ' Profesión'),
+    profession:    get('profesion', 'profesión', ' Profesión', 'titulo', 'título', 'prof', 'cargo', 'puesto'),
     department:    get('establecimiento', 'departamento', 'unidad', 'cesfam', 'consultorio', 'lugar de trabajo', 'centro'),
-    nationality:   get('nacionalidad', 'nacionalidad funcionario', 'nacionalidad func.', 'nac.', 'nac', 'nacion', 'pais', 'país', 'nationality'),
+    nationality:   get('nacionalidad', 'nacionalidad funcionario', 'nacionalidad func.', 'nac.', 'nac', 'nacion', 'pais', 'país', 'nationality', 'pais de origen'),
     contract_type: get('tipo contrato', 'contrato', 'tipo de contrato', 'tipo_contrato', 'calidad juridica', 'calidad jurídica', 'vinculo'),
   };
 

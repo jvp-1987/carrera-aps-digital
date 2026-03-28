@@ -37,6 +37,7 @@ function toISODate(v) {
     // XLSX.utils.format_cell puede ser pesado, usamos cálculo manual seguro:
     // Ajuste de 25569 días ente 1900 y 1970 epoch.
     const date = new Date(Math.round((Number(v) - 25569) * 86400 * 1000));
+    if (isNaN(date.getTime())) return String(v);
     // Debido a desfases de timezone de Excel, sumamos unas horas para evitar saltos al día anterior
     date.setUTCHours(date.getUTCHours() + 12); 
     const y = date.getUTCFullYear();
@@ -81,6 +82,7 @@ const COMPARE_FIELDS = [
 
 // ── Intenta mapear columnas del Excel al esquema interno ───────
 function parseExcelRow(row) {
+  if (!row || typeof row !== 'object') return { parsed: {} };
   const columnsFound = {};
   const getRaw = (...keys) => {
     for (const k of keys) {
@@ -311,19 +313,24 @@ export default function ValidacionExcel() {
       patch[key] = excel;
     }
     try {
+      if (!employeeId) throw new Error('ID de funcionario no válido');
       await base44.entities.Employee.update(employeeId, patch);
       toast.success('Datos actualizados correctamente');
-      // Actualiza el resultado en la lista local
-      setResults(prev => prev.map(r => r.employee?.id === employeeId
+      
+      // Actualiza el resultado en la lista local de forma segura
+      setResults(prev => (prev || []).map(r => r.employee?.id === employeeId
         ? { ...r, diffs: {}, status: 'ok' }
         : r
       ));
+      
       queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
     } catch (err) {
-      console.error('Error al aplicar corrección:', err);
-      toast.error(`Error al aplicar la corrección: ${err?.message || 'Error desconocido'}`);
+      console.error(`[CRÍTICO] Error al aplicar corrección a ID ${employeeId}:`, err);
+      toast.error(`Fallo en ID ${employeeId}: ${err?.message || 'Error desconocido'}`);
+      throw err; // Re-lanzar para que handleApplyAll sepa que falló
+    } finally {
+      setApplyingId(null);
     }
-    setApplyingId(null);
   };
 
   const handleCreate = async (excelRow) => {
@@ -387,10 +394,24 @@ export default function ValidacionExcel() {
     const withDiffs = (results || []).filter(r => Object.keys(r.diffs).length > 0 && r.employee);
     if (!withDiffs.length) { toast.info('No hay diferencias para aplicar'); return; }
     if (!window.confirm(`¿Aplicar las ${withDiffs.length} correcciones en lote? Esta acción actualizará los datos del sistema con los del Excel.`)) return;
+    
+    let successCount = 0;
+    let failCount = 0;
+
     for (const r of withDiffs) {
-      await handleApply(r.employee.id, r.diffs);
+      try {
+        await handleApply(r.employee.id, r.diffs);
+        successCount++;
+      } catch (err) {
+        failCount++;
+      }
     }
-    toast.success('Todas las correcciones aplicadas');
+    
+    if (failCount > 0) {
+      toast.warning(`Proceso completado con ${failCount} errores. Se aplicaron ${successCount} correcciones.`);
+    } else {
+      toast.success(`Se aplicaron ${successCount} correcciones exitosamente.`);
+    }
   };
 
   const handleExportReport = () => {

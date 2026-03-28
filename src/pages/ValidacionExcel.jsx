@@ -68,6 +68,13 @@ function toISODate(v) {
   return s;
 }
 
+// Formatea 'YYYY-MM-DD' a 'DD/MM/YYYY' para visualización
+function formatToDMY(isoStr) {
+  if (!isoStr || !/^\d{4}-\d{2}-\d{2}$/.test(isoStr)) return isoStr;
+  const [y, m, d] = isoStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 // ── Campos a comparar ─────────────────────────────────────────
 const COMPARE_FIELDS = [
   { key: 'full_name',      label: 'Nombre',           normalize: norm },
@@ -112,7 +119,7 @@ function parseExcelRow(row) {
     position:      get('cargo', 'puesto', 'especialidad', 'funcion', 'función'),
     profession:    get('profesion', 'profesión', 'titulo', 'título', 'prof'),
     department:    get('establecimiento', 'departamento', 'unidad', 'cesfam', 'consultorio', 'lugar de trabajo', 'centro'),
-    nationality:   get('nacionalidad', 'nacion', 'pais', 'país', 'nacionalidad funcionario', 'nationality'),
+    nationality:   get('nacionalidad', 'nacionalidad funcionario', 'nacionalidad func.', 'nac.', 'nac', 'nacion', 'pais', 'país', 'nationality'),
     contract_type: get('tipo contrato', 'contrato', 'tipo de contrato', 'tipo_contrato', 'calidad juridica', 'calidad jurídica', 'vinculo'),
   };
 
@@ -136,11 +143,12 @@ function compareEmployee(excelRow, sysEmployee) {
     }
 
     if (excelVal && sysVal && excelVal !== sysVal) {
-      // Muestra la fecha ya normalizada como ISO para claridad
-      const displayExcel = field.key === 'birth_date' ? excelVal : String(rawExcel).trim();
-      diffs[field.key] = { excel: displayExcel, system: String(rawSys).trim() };
+      // Muestra la fecha ya formateada como DD/MM/YYYY para claridad
+      const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : String(rawExcel).trim();
+      const displaySys   = field.key === 'birth_date' ? formatToDMY(sysVal)   : String(rawSys).trim();
+      diffs[field.key] = { excel: displayExcel, system: displaySys };
     } else if (excelVal && !sysVal) {
-      const displayExcel = field.key === 'birth_date' ? excelVal : String(rawExcel).trim();
+      const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : String(rawExcel).trim();
       diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true };
     }
   }

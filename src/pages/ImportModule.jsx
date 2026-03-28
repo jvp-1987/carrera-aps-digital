@@ -307,6 +307,7 @@ function parseCarreraSheet(sheet, sheetName) {
   const profesion = getKV('profesi');
   const universidad = getKV('universidad');
   const fechaNacimiento = getKV('fecha nacimiento', 'nacimiento');
+  const nacionalidad = getKV('nacionalidad', 'pais', 'país', 'nacion', 'nación');
 
   return {
     full_name: (fullNameFromSheet || sheetName).trim(),
@@ -319,6 +320,7 @@ function parseCarreraSheet(sheet, sheetName) {
     profesion,
     universidad,
     fecha_nacimiento: fechaNacimiento,
+    nationality: nacionalidad || 'Chilena',
     experiencia: experienciaRows,
     capacitacion: capacitacionRows,
     permisos: permisosRows,
@@ -355,6 +357,8 @@ async function importEmployee(emp, rutMap, onRateLimitRetry = null) {
     position: emp.position || '',
     bienios_count: emp.bienios_count || 0,
     total_points: emp.total_points || 0,
+    birth_date: normalizeDateString(emp.fecha_nacimiento),
+    nationality: emp.nationality || 'Chilena',
     status: 'Activo',
   };
 
@@ -516,6 +520,7 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
               { key: 'bienios_count', label: 'Bienios', type: 'number' },
               { key: 'total_points', label: 'Puntos', type: 'number' },
               { key: 'position', label: 'Cargo' },
+              { key: 'nationality', label: 'Nacionalidad' },
             ].map(f => (
               <div key={f.key} className="flex flex-col gap-1">
                 <label className="text-[10px] font-medium text-slate-600">{f.label}</label>

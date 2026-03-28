@@ -84,11 +84,22 @@ export default function EmployeeProfile() {
       total_points: parseFloat(headerForm.total_points) || employee.total_points,
       status: headerForm.status || employee.status,
       contract_end_date: headerForm.contract_end_date !== undefined ? headerForm.contract_end_date : employee.contract_end_date,
+      birth_date: headerForm.birth_date !== undefined ? headerForm.birth_date : employee.birth_date,
+      nationality: headerForm.nationality !== undefined ? headerForm.nationality : employee.nationality,
+      profession: headerForm.profession !== undefined ? headerForm.profession : employee.profession,
     });
   };
 
   const handleEditHeaderOpen = () => {
-    setHeaderForm({rut: employee.rut, full_name: employee.full_name, category: employee.category, current_level: employee.current_level, position: employee.position, bienios_count: employee.bienios_count, total_points: employee.total_points, status: employee.status, contract_end_date: employee.contract_end_date || ''});
+    setHeaderForm({
+      rut: employee.rut, full_name: employee.full_name, category: employee.category,
+      current_level: employee.current_level, position: employee.position,
+      bienios_count: employee.bienios_count, total_points: employee.total_points,
+      status: employee.status, contract_end_date: employee.contract_end_date || '',
+      birth_date: employee.birth_date || '',
+      nationality: employee.nationality || '',
+      profession: employee.profession || '',
+    });
     setEditingHeader(true);
   };
 
@@ -171,6 +182,18 @@ export default function EmployeeProfile() {
                 <div>
                   <label className="text-xs font-medium text-indigo-100">Fin Contrato</label>
                   <Input type="date" value={headerForm.contract_end_date || employee.contract_end_date || ''} onChange={e => setHeaderForm({...headerForm, contract_end_date: e.target.value})} className="text-sm h-8 mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Fecha Nacimiento</label>
+                  <Input type="date" value={headerForm.birth_date ?? employee.birth_date ?? ''} onChange={e => setHeaderForm({...headerForm, birth_date: e.target.value})} className="text-sm h-8 mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-indigo-100">Nacionalidad</label>
+                  <Input value={headerForm.nationality ?? employee.nationality ?? ''} onChange={e => setHeaderForm({...headerForm, nationality: e.target.value})} className="text-sm h-8 mt-1" placeholder="Chilena" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-medium text-indigo-100">Profesión / Título</label>
+                  <Input value={headerForm.profession ?? employee.profession ?? ''} onChange={e => setHeaderForm({...headerForm, profession: e.target.value})} className="text-sm h-8 mt-1" placeholder="Ej: Enfermera, Médico Cirujano" />
                 </div>
               </div>
               <div className="flex gap-2 pt-3">

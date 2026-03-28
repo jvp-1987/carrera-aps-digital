@@ -22,6 +22,7 @@ export default function EmployeeForm() {
     rut: '', full_name: '', category: '', current_level: 15,
     position: '', department: '', hire_date: '', contract_end_date: '', contract_type: '',
     email: '', phone: '', status: 'Activo',
+    birth_date: '', nationality: 'Chilena', profession: '',
   });
 
   const [duplicateWarning, setDuplicateWarning] = useState(null); // { type: 'rut'|'name', employee }
@@ -163,6 +164,18 @@ export default function EmployeeForm() {
               <div>
                 <Label>Teléfono</Label>
                 <Input placeholder="+56 9 1234 5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
+              </div>
+              <div>
+                <Label>Fecha de Nacimiento</Label>
+                <Input type="date" value={form.birth_date} onChange={e => update('birth_date', e.target.value)} />
+              </div>
+              <div>
+                <Label>Nacionalidad</Label>
+                <Input placeholder="Chilena" value={form.nationality} onChange={e => update('nationality', e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label>Profesión / Título</Label>
+                <Input placeholder="Ej: Enfermera, Médico Cirujano, Aux. Administrativo" value={form.profession} onChange={e => update('profession', e.target.value)} />
               </div>
             </div>
 

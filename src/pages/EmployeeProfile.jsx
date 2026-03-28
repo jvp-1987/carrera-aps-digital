@@ -218,7 +218,9 @@ export default function EmployeeProfile() {
                       {employee.rut} • {employee.position || 'Sin cargo'}
                     </p>
                     <p className="text-indigo-200 text-xs mt-1">
-                      {employee.department || 'Sin establecimiento'}
+                      {employee.department || 'Sin establecimiento'} 
+                      {employee.birth_date && ` • Nac: ${employee.birth_date}`}
+                      {employee.nationality && ` • ${employee.nationality}`}
                     </p>
                   </div>
                 </div>

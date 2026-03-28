@@ -52,10 +52,14 @@ const COMPARE_FIELDS = [
 
 // ── Intenta mapear columnas del Excel al esquema interno ───────
 function parseExcelRow(row) {
+  const columnsFound = {};
   const getRaw = (...keys) => {
     for (const k of keys) {
       const found = Object.keys(row).find(col => norm(col) === norm(k));
-      if (found !== undefined && row[found] !== undefined && row[found] !== '') return row[found];
+      if (found !== undefined) {
+        columnsFound[k] = found;
+        if (row[found] !== undefined && row[found] !== '') return row[found];
+      }
     }
     return '';
   };
@@ -65,19 +69,22 @@ function parseExcelRow(row) {
   };
   const getDate = (...keys) => {
     const raw = getRaw(...keys);
-    if (raw === '') return '';
+    if (raw === '' || raw === undefined) return '';
     return toISODate(raw);
   };
-  return {
-    full_name:     get('nombre', 'nombre completo', 'funcionario', 'nombres', 'apellidos y nombres'),
-    rut:           get('rut', 'run'),
-    birth_date:    getDate('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fecha_nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nacimiento', 'f.nacimiento'),
-    category:      get('categoria', 'categoría', 'cat', 'estamento'),
-    profession:    get('profesion', 'profesión', 'titulo', 'título', 'cargo', 'especialidad'),
-    department:    get('establecimiento', 'departamento', 'unidad', 'cesfam', 'consultorio', 'lugar de trabajo'),
-    nationality:   get('nacionalidad', 'nacion', 'pais', 'país', 'nacionalidad funcionario'),
-    contract_type: get('tipo contrato', 'contrato', 'tipo de contrato', 'tipo_contrato', 'calidad juridica', 'calidad jurídica'),
+
+  const parsed = {
+    full_name:     get('nombre', 'nombre completo', 'funcionario', 'nombres', 'apellidos y nombres', 'nombre_completo'),
+    rut:           get('rut', 'run', 'cedula', 'id'),
+    birth_date:    getDate('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fecha_nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nacimiento', 'f.nacimiento', 'dob', 'date of birth'),
+    category:      get('categoria', 'categoría', 'cat', 'estamento', 'nivel cat'),
+    profession:    get('profesion', 'profesión', 'titulo', 'título', 'cargo', 'especialidad', 'prof'),
+    department:    get('establecimiento', 'departamento', 'unidad', 'cesfam', 'consultorio', 'lugar de trabajo', 'centro'),
+    nationality:   get('nacionalidad', 'nacion', 'pais', 'país', 'nacionalidad funcionario', 'nationality'),
+    contract_type: get('tipo contrato', 'contrato', 'tipo de contrato', 'tipo_contrato', 'calidad juridica', 'calidad jurídica', 'vinculo'),
   };
+
+  return { parsed, columnsFound };
 }
 
 // ── Lógica de comparación ──────────────────────────────────────
@@ -88,6 +95,14 @@ function compareEmployee(excelRow, sysEmployee) {
     const rawSys   = sysEmployee?.[field.key] ?? '';
     const excelVal = field.normalize(rawExcel);
     const sysVal   = field.normalize(rawSys);
+
+    // DEBUG: Solo loggear si son campos problemáticos
+    if (field.key === 'birth_date' || field.key === 'nationality') {
+      console.log(`[DEBUG] Comparando ${field.key} para ${sysEmployee?.full_name}:`);
+      console.log(`  Excel: "${rawExcel}" -> normalizado: "${excelVal}"`);
+      console.log(`  Sistema: "${rawSys}" -> normalizado: "${sysVal}"`);
+    }
+
     if (excelVal && sysVal && excelVal !== sysVal) {
       // Muestra la fecha ya normalizada como ISO para claridad
       const displayExcel = field.key === 'birth_date' ? excelVal : String(rawExcel).trim();
@@ -199,13 +214,18 @@ export default function ValidacionExcel() {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
+      if (rows.length > 0) {
+        console.log('[DEBUG] Columnas detectadas en el Excel:', Object.keys(rows[0]));
+      }
+
       const byRut = {};
       freshEmployees.forEach(e => { byRut[normRut(e.rut)] = e; });
 
       const mapped = rows
         .map(row => parseExcelRow(row))
-        .filter(row => row.full_name || row.rut)
-        .map(excelRow => {
+        .filter(entry => entry.parsed.full_name || entry.parsed.rut)
+        .map(entry => {
+          const excelRow = entry.parsed;
           const normalized = normRut(excelRow.rut);
           const employee = byRut[normalized];
           if (!employee) return { excelRow, employee: null, diffs: {}, status: 'not_found' };

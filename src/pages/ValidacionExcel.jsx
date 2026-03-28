@@ -18,23 +18,52 @@ function normRut(v) {
   return (v ?? '').toString().replace(/\./g, '').replace(/-/g, '').replace(/\s/g, '').toUpperCase();
 }
 
-// Convierte cualquier valor de fecha a formato 'YYYY-MM-DD'
+// Convierte cualquier valor de fecha a formato 'YYYY-MM-DD' de forma ultra-robusta
 function toISODate(v) {
   if (!v && v !== 0) return '';
-  // Si es objeto Date (xlsx con cellDates:true)
+  
+  // 1. Si ya es un objeto Date (xlsx con cellDates:true)
   if (v instanceof Date) {
+    if (isNaN(v.getTime())) return '';
     const y = v.getFullYear();
     const m = String(v.getMonth() + 1).padStart(2, '0');
     const d = String(v.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
+
+  // 2. Si es un número (Excel serial date)
+  if (typeof v === 'number' || (!isNaN(v) && !isNaN(parseFloat(v)))) {
+    // Excel epochs: 1900-01-01. 
+    // XLSX.utils.format_cell puede ser pesado, usamos cálculo manual seguro:
+    // Ajuste de 25569 días ente 1900 y 1970 epoch.
+    const date = new Date(Math.round((Number(v) - 25569) * 86400 * 1000));
+    // Debido a desfases de timezone de Excel, sumamos unas horas para evitar saltos al día anterior
+    date.setUTCHours(date.getUTCHours() + 12); 
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   const s = String(v).trim();
-  // Formato DD/MM/YYYY o DD-MM-YYYY
+  if (!s) return '';
+
+  // 3. Formato DD/MM/YYYY o DD-MM-YYYY
   const dmy = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
   if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
-  // Formato YYYY-MM-DD ya correcto
+
+  // 4. Formato YYYY-MM-DD
   const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (ymd) return s;
+
+  // 5. Formato DD/MM/YY (años cortos)
+  const dmyShort = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2})$/);
+  if (dmyShort) {
+    const year = parseInt(dmyShort[3]);
+    const fullYear = year > 40 ? 1900 + year : 2000 + year;
+    return `${fullYear}-${dmyShort[2].padStart(2,'0')}-${dmyShort[1].padStart(2,'0')}`;
+  }
+
   return s;
 }
 
@@ -280,6 +309,7 @@ export default function ValidacionExcel() {
     try {
       await base44.entities.Employee.create({
         ...excelRow,
+        rut: normRut(excelRow.rut), // Normalizamos RUT SIEMPRE al crear para el sistema
         status: 'Activo',
         current_level: 15,
         total_experience_days: 0,

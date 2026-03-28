@@ -39,6 +39,13 @@ function normalizeDateString(dateStr) {
   return str;
 }
 
+function normalizeNationality(val) {
+  if (!val) return 'Chilena';
+  const v = val.toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (v === 'chile' || v === 'chilena' || v === 'chileno' || v === 'chilenos' || v === 'chilenas' || v === 'cl') return 'Chilena';
+  return val.toString().trim();
+}
+
 function cellStr(sheet, col, row) {
   const cell = sheet[XLSX.utils.encode_cell({ c: col, r: row })];
   if (!cell) return '';
@@ -320,7 +327,7 @@ function parseCarreraSheet(sheet, sheetName) {
     profesion,
     universidad,
     fecha_nacimiento: fechaNacimiento,
-    nationality: nacionalidad || 'Chilena',
+    nationality: normalizeNationality(nacionalidad),
     experiencia: experienciaRows,
     capacitacion: capacitacionRows,
     permisos: permisosRows,
@@ -537,6 +544,7 @@ export default function ImportModule() {
       if (emp.sheetName !== sheetName) return emp;
       let finalValue = value;
       if (field === 'rut') finalValue = normalizeRUT(value);
+      else if (field === 'nationality') finalValue = normalizeNationality(value);
       else if (['current_level', 'bienios_count'].includes(field)) {
         finalValue = value === '' ? null : parseInt(value) || value;
       } else if (field === 'total_points') {

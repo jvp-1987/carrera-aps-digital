@@ -29,13 +29,20 @@ function normalizeDateString(dateStr) {
   return str;
 }
 
+function normalizeNationality(val) {
+  if (!val) return 'Chilena';
+  const v = val.toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (v === 'chile' || v === 'chilena' || v === 'chileno' || v === 'chilenos' || v === 'chilenas' || v === 'cl') return 'Chilena';
+  return val.toString().trim();
+}
+
 async function importEmployee(emp, rutMap) {
   const payload = {
     rut: emp.rut, full_name: emp.full_name, category: emp.category,
     current_level: emp.current_level, position: emp.position || '',
     bienios_count: emp.bienios_count || 0, total_points: emp.total_points || 0,
     birth_date: normalizeDateString(emp.fecha_nacimiento),
-    nationality: emp.nationality || 'Chilena',
+    nationality: normalizeNationality(emp.nationality),
     status: 'Activo',
   };
 

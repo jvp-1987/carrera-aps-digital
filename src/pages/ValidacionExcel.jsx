@@ -9,10 +9,12 @@ import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, XCircle, RefreshC
 import { toast } from 'sonner';
 
 // ── Normalización ──────────────────────────────────────────────
-function norm(v) {
-  return (v ?? '').toString().trim().toLowerCase()
+function norm(v, isNationality = false) {
+  let val = (v ?? '').toString().trim().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ');
+  if (isNationality && (val === 'chile' || val === 'chilena' || val === 'chileno' || val === 'chilenos' || val === 'chilenas')) return 'chilena';
+  return val;
 }
 function normRut(v) {
   return (v ?? '').toString().replace(/\./g, '').replace(/-/g, '').replace(/\s/g, '').toUpperCase();
@@ -83,7 +85,7 @@ const COMPARE_FIELDS = [
   { key: 'category',       label: 'Categoría',        normalize: norm },
   { key: 'profession',     label: 'Profesión',        normalize: norm },
   { key: 'department',     label: 'Establecimiento',  normalize: norm },
-  { key: 'nationality',    label: 'Nacionalidad',     normalize: norm },
+  { key: 'nationality',    label: 'Nacionalidad',     normalize: val => norm(val, true) },
   { key: 'contract_type',  label: 'Tipo Contrato',    normalize: norm },
 ];
 
@@ -261,12 +263,44 @@ export default function ValidacionExcel() {
       const reader = new FileReader();
       reader.onload = (ev) => {
         try {
-          const wb = XLSX.read(ev.target.result, { type: 'binary', cellDates: true });
+          const ab = ev.target.result;
+          const wb = XLSX.read(ab, { type: 'array', cellDates: true });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
+          // Convertimos toda la hoja a una matriz 2D (incluyendo filas vacías y basura al inicio)
+          const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+          // DESCUBRIMIENTO DE CABECERA: Buscamos qué fila contiene palabras clave (RUT, Nombre, Categoría, etc.)
+          let headerIndex = -1;
+          for (let i = 0; i < Math.min(25, allRows.length); i++) {
+            const row = allRows[i].map(c => norm(c));
+            if (row.some(c => c.includes('rut') || c.includes('nombre') || c.includes('funcionario') || c.includes('nacimiento'))) {
+              headerIndex = i;
+              break;
+            }
+          }
+
+          if (headerIndex === -1) {
+            toast.error('No se pudo encontrar una fila de cabecera válida en el Excel (buscando RUT, Nombre, etc.)');
+            setLoadingFile(false);
+            return;
+          }
+
+          console.log(`[DEBUG] Cabecera encontrada en fila: ${headerIndex}`, allRows[headerIndex]);
+
+          // Re-extraemos los datos usando la cabecera descubierta
+          const headers = allRows[headerIndex];
+          const rows = allRows.slice(headerIndex + 1)
+            .filter(r => r.some(c => c !== '')) // solo filas con algo de contenido
+            .map(r => {
+              const obj = {};
+              headers.forEach((h, idx) => { if (h) obj[h] = r[idx]; });
+              return obj;
+            });
+
+          console.log(`[DEBUG] Se procesarán ${rows.length} funcionarios del Excel.`);
           if (rows.length > 0) {
-            console.log('[DEBUG] Columnas detectadas en el Excel:', Object.keys(rows[0]));
+            console.log('[DEBUG] Columnas detectadas:', Object.keys(rows[0]));
           }
 
           const byRut = {};
@@ -294,7 +328,7 @@ export default function ValidacionExcel() {
         }
       };
       reader.onerror = () => setLoadingFile(false);
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     } catch (err) {
       console.error('Error al obtener datos frescos:', err);
       toast.error('Error al sincronizar con el servidor');

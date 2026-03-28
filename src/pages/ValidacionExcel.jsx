@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -145,12 +145,8 @@ export default function ValidacionExcel() {
     queryFn: () => base44.entities.Employee.list('-created_date', 2000),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Employee.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
-    },
-  });
+  // Nota: usamos base44.entities.Employee.update directamente en handleApply
+  // siguiendo el mismo patrón que EmployeeProfile.jsx
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -189,15 +185,17 @@ export default function ValidacionExcel() {
       patch[key] = excel;
     }
     try {
-      await updateMutation.mutateAsync({ id: employeeId, data: patch });
+      await base44.entities.Employee.update(employeeId, patch);
       toast.success('Datos actualizados correctamente');
-      // Re-run comparison
+      // Actualiza el resultado en la lista local
       setResults(prev => prev.map(r => r.employee?.id === employeeId
         ? { ...r, diffs: {}, status: 'ok' }
         : r
       ));
-    } catch {
-      toast.error('Error al aplicar la corrección');
+      queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
+    } catch (err) {
+      console.error('Error al aplicar corrección:', err);
+      toast.error(`Error al aplicar la corrección: ${err?.message || 'Error desconocido'}`);
     }
     setApplyingId(null);
   };

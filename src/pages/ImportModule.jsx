@@ -15,24 +15,45 @@ import { toast } from 'sonner';
 
 // ── Helpers ─────────────────────────────────────────────────────
 function normalizeRUT(rut) {
+  // Remove dots, dashes, commas, spaces — then uppercase
   return (rut || '').toString()
-    .replace(/\./g, '').replace(/,/g, '').replace(/\s/g, '')
+    .replace(/\./g, '').replace(/-/g, '').replace(/,/g, '').replace(/\s/g, '')
     .trim().toUpperCase();
 }
 
-function normalizeDateString(dateStr) {
-  if (!dateStr) return '';
-  const str = String(dateStr).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (match) {
-    const [, day, month, year] = match;
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+function normalizeDateString(dateVal) {
+  if (!dateVal && dateVal !== 0) return '';
+  // Handle JS Date objects (from xlsx cellDates:true)
+  if (dateVal instanceof Date) {
+    if (isNaN(dateVal.getTime())) return '';
+    const y = dateVal.getFullYear();
+    const m = String(dateVal.getMonth() + 1).padStart(2, '0');
+    const d = String(dateVal.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
+  // Handle Excel serial number (numeric type)
+  if (typeof dateVal === 'number') {
+    // Excel epoch starts 1900-01-01. Add 12h to avoid timezone day-boundary issues.
+    const date = new Date(Math.round((dateVal - 25569) * 86400 * 1000));
+    date.setUTCHours(date.getUTCHours() + 12);
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const str = String(dateVal).trim();
+  if (!str) return '';
+  // Already ISO?
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // DD/MM/YYYY or DD-MM-YYYY
+  const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (match) return `${match[3]}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`;
+  // Numeric string serial (e.g. "29232")
   if (/^\d+$/.test(str)) {
-    const num = parseInt(str);
-    if (num > 0 && num < 100000) {
-      const date = new Date((num - 25569) * 86400 * 1000);
+    const num = parseInt(str, 10);
+    if (num > 10000 && num < 200000) {
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      date.setUTCHours(date.getUTCHours() + 12);
       return date.toISOString().split('T')[0];
     }
   }

@@ -383,6 +383,11 @@ export default function ValidacionExcel() {
       await base44.entities.Employee.create({
         ...excelRow,
         rut: normRut(excelRow.rut), // Normalizamos RUT SIEMPRE al crear para el sistema
+        position: (excelRow.position || '').toUpperCase(),
+        birth_date: excelRow.birth_date || '',
+        nationality: excelRow.nationality
+          ? ((['chile','chilena','chileno','chilenos','chilenas','cl'].includes((excelRow.nationality).toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''))) ? 'Chilena' : excelRow.nationality)
+          : 'Chilena',
         status: 'Activo',
         current_level: 15,
         total_experience_days: 0,
@@ -392,7 +397,6 @@ export default function ValidacionExcel() {
         training_points: 0,
         postitle_percentage: 0,
         total_points: 0,
-        nationality: excelRow.nationality || 'Chilena',
       });
       toast.success(`Funcionario ${excelRow.full_name} creado`);
       

@@ -21,6 +21,7 @@ import ImportModule from '@/pages/ImportModule';
 import GestionEspecial from '@/pages/GestionEspecial';
 import DataAudit from '@/pages/DataAudit';
 import TablaSalarial from '@/pages/TablaSalarial';
+import ValidacionExcel from '@/pages/ValidacionExcel';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -58,6 +59,7 @@ const AuthenticatedApp = () => {
         <Route path="/GestionEspecial" element={<GestionEspecial />} />
         <Route path="/DataAudit" element={<DataAudit />} />
         <Route path="/TablaSalarial" element={<TablaSalarial />} />
+        <Route path="/ValidacionExcel" element={<ValidacionExcel />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

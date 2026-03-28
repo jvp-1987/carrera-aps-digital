@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   Users, LayoutDashboard, GraduationCap, FileText, 
-  Bell, Shield, ChevronLeft, ChevronRight, LogOut, TrendingUp, UploadCloud, Umbrella, ClipboardList, AlertTriangle, RotateCcw, DollarSign
+  Bell, Shield, ChevronLeft, ChevronRight, LogOut, TrendingUp, UploadCloud, Umbrella, ClipboardList, AlertTriangle, RotateCcw, DollarSign, CheckSquare
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -31,6 +31,7 @@ const navGroups = [
     items: [
       { path: '/ImportModule', label: 'Importación', icon: UploadCloud },
       { path: '/DataAudit', label: 'Centro de Auditoría', icon: ClipboardList },
+      { path: '/ValidacionExcel', label: 'Validación Excel', icon: CheckSquare },
       { path: '/GestionEspecial', label: 'Gestión Especial', icon: Umbrella },
       { path: '/BudgetProjection', label: 'Proyección 2027', icon: TrendingUp },
       { path: '/TablaSalarial', label: 'Tabla Salarial', icon: DollarSign },

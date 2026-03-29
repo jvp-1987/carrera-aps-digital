@@ -341,7 +341,8 @@ function parseCarreraSheet(sheet, sheetName) {
   const position = (getKV('cargo', 'puesto', 'especialidad', 'funcion', 'función', 'profesion', 'profesión', ' Profesión') || '').toUpperCase();
   const profession = (getKV('profesion', 'profesión', ' Profesión', 'titulo', 'título', 'prof', 'cargo', 'puesto') || '').toUpperCase();
   const universidad = getKV('universidad');
-  const birth_date = getKV('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nac', 'f. nac');
+  const birthDateRaw = getKV('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nac', 'f. nac');
+  const birthDateNormalized = normalizeDateString(birthDateRaw);
   const nationality = getKV('nacionalidad', 'pais', 'país', 'nacion', 'nación', 'nac.', 'pais de origen');
 
   return {
@@ -354,7 +355,8 @@ function parseCarreraSheet(sheet, sheetName) {
     total_points: headerData.total_points,
     profession,
     universidad,
-    birth_date,
+    birth_date: birthDateNormalized,
+    birth_date_raw: birthDateRaw,
     nationality: normalizeNationality(nationality),
     experiencia: experienciaRows,
     capacitacion: capacitacionRows,
@@ -372,10 +374,16 @@ function validateEmployee(emp) {
   if (!VALID_CATEGORIES.includes(emp.category)) errors.push(`Categoría inválida "${emp.category}"`);
   if (!emp.current_level || emp.current_level < 1 || emp.current_level > 15)
     errors.push(`Nivel inválido "${emp.current_level}"`);
-  if (emp.birth_date && !/^\d{4}-\d{2}-\d{2}$/.test(String(emp.birth_date))) {
-    errors.push(`Fecha nacimiento inválida "${emp.birth_date}"`);
-  }
   return errors;
+}
+
+function buildWarnings(emp) {
+  const warnings = [];
+  const rawBirth = String(emp.birth_date_raw || '').trim();
+  if (rawBirth && !emp.birth_date) {
+    warnings.push(`Fecha nacimiento descartada: "${rawBirth}"`);
+  }
+  return warnings;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -404,6 +412,7 @@ function calculateDaysBetween(startStr, endStr) {
 function EmployeeCard({ emp, rutMap, onEdit }) {
   const [open, setOpen] = useState(false);
   const hasErrors = emp.errors.length > 0;
+  const hasWarnings = (emp.warnings || []).length > 0;
   const existsInDB = emp.data.rut && rutMap[emp.data.rut];
 
   return (
@@ -421,6 +430,7 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
           </div>
           <div className="flex items-center gap-2">
             {hasErrors && <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-200 text-[10px]">{emp.errors.length} error{emp.errors.length > 1 ? 'es' : ''}</Badge>}
+            {!hasErrors && hasWarnings && <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">{emp.warnings.length} advertencia{emp.warnings.length > 1 ? 's' : ''}</Badge>}
             {open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
           </div>
         </button>
@@ -448,6 +458,15 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
               {emp.errors.map((e, i) => (
                 <p key={i} className="text-xs text-red-700 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3 shrink-0" /> {e}
+                </p>
+              ))}
+            </div>
+          )}
+          {!hasErrors && hasWarnings && (
+            <div className="bg-amber-100 border border-amber-300 rounded p-2 space-y-1">
+              {emp.warnings.map((w, i) => (
+                <p key={i} className="text-xs text-amber-800 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 shrink-0" /> {w}
                 </p>
               ))}
             </div>
@@ -560,9 +579,10 @@ export default function ImportModule() {
       const parsed = sheetNames.map(name => {
         const sheet = wb.Sheets[name];
         const data = parseCarreraSheet(sheet, name);
-        if (!data) return { sheetName: name, data: {}, errors: ['No se pudo parsear la hoja'] };
+        if (!data) return { sheetName: name, data: {}, errors: ['No se pudo parsear la hoja'], warnings: [] };
         const errors = validateEmployee(data);
-        return { sheetName: name, data, errors };
+        const warnings = buildWarnings(data);
+        return { sheetName: name, data, errors, warnings };
       });
       setLocalEmployees(parsed);
       setLocalStep('preview');
@@ -601,6 +621,8 @@ export default function ImportModule() {
 
   const localValidCount = localEmployees.filter(e => e.errors.length === 0).length;
   const localErrorCount = localEmployees.length - localValidCount;
+  const localDateWarningRows = localEmployees.filter(e => (e.warnings || []).some(w => w.includes('Fecha nacimiento descartada')));
+  const localDateWarningCount = localDateWarningRows.length;
 
   const isRunning = status === 'running';
   const isError = status === 'error';
@@ -734,7 +756,21 @@ export default function ImportModule() {
                 <span className="text-sm font-semibold text-slate-700">{localEmployees.length} funcionarios detectados</span>
                 <Badge variant="secondary" className="bg-green-100 text-green-800">{localValidCount} válidos</Badge>
                 {localErrorCount > 0 && <Badge variant="destructive" className="bg-red-100 text-red-800">{localErrorCount} con errores</Badge>}
+                {localDateWarningCount > 0 && <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">{localDateWarningCount} con fecha descartada</Badge>}
               </div>
+
+              {localDateWarningCount > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-semibold text-amber-900">Fechas descartadas en vista previa (se importará vacío en Fecha Nacimiento):</p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                    {localDateWarningRows.map((row) => (
+                      <p key={row.sheetName} className="text-xs text-amber-800">
+                        • {row.sheetName}: {row.data.birth_date_raw}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
                 {localEmployees.map(emp => (

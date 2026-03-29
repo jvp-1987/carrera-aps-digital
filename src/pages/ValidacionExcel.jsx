@@ -368,7 +368,7 @@ export default function ValidacionExcel() {
     if (file) processFile(file);
   };
 
-  const handleApply = async (employeeId, diffs) => {
+  const handleApply = async (employeeId, diffs, isBulk = false) => {
     setApplyingId(employeeId);
     const patch = {};
     for (const [key, { raw }] of Object.entries(diffs)) {
@@ -377,7 +377,7 @@ export default function ValidacionExcel() {
     try {
       if (!employeeId) throw new Error('ID de funcionario no válido');
       await base44.entities.Employee.update(employeeId, patch);
-      toast.success('Datos actualizados correctamente');
+      if (!isBulk) toast.success('Datos actualizados correctamente');
       
       // Actualiza el resultado en la lista local de forma segura
       setResults(prev => (prev || []).map(r => r.employee?.id === employeeId
@@ -385,7 +385,7 @@ export default function ValidacionExcel() {
         : r
       ));
       
-      queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
+      if (!isBulk) queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
     } catch (err) {
       console.error(`[CRÍTICO] Error al aplicar corrección a ID ${employeeId}:`, err);
       toast.error(`Fallo en ID ${employeeId}: ${err?.message || 'Error desconocido'}`);
@@ -395,11 +395,11 @@ export default function ValidacionExcel() {
     }
   };
 
-  const handleCreate = async (excelRow) => {
+  const handleCreate = async (excelRow, isBulk = false) => {
     const rutKey = normRut(excelRow.rut);
     setCreatingIds(prev => new Set(prev).add(rutKey));
     try {
-      await base44.entities.Employee.create({
+      const newEmp = await base44.entities.Employee.create({
         ...excelRow,
         rut: normRut(excelRow.rut), // Normalizamos RUT SIEMPRE al crear para el sistema
         position: (excelRow.position || '').toUpperCase(),
@@ -417,22 +417,16 @@ export default function ValidacionExcel() {
         postitle_percentage: 0,
         total_points: 0,
       });
-      toast.success(`Funcionario ${excelRow.full_name} creado`);
-      
-      // Forzar refetch para actualizar la lista de empleados y recalculamos resultados
-      const freshResult = await refetch();
-      const freshEmployees = freshResult.data ?? [];
-      const byRut = {};
-      freshEmployees.forEach(e => { byRut[normRut(e.rut)] = e; });
+      if (!isBulk) toast.success(`Funcionario ${excelRow.full_name} creado`);
       
       setResults(prev => (prev || []).map(r => {
         const normR = normRut(r.excelRow.rut);
         if (normR === rutKey) {
-          const emp = byRut[normR];
-          return { ...r, employee: emp, status: 'ok', diffs: {} };
+          return { ...r, employee: newEmp, status: 'ok', diffs: {} };
         }
         return r;
       }));
+      if (!isBulk) queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
     } catch (err) {
       console.error('Error al crear funcionario:', err);
       toast.error(`Error al crear funcionario: ${err?.message || 'Error desconocido'}`);
@@ -450,10 +444,13 @@ export default function ValidacionExcel() {
     if (!window.confirm(`¿Deseas agregar los ${notFound.length} funcionarios nuevos al sistema automáticamente?`)) return;
     
     // Procesar en serie para no saturar el servidor y tener feedback
-    for (const r of notFound) {
-      await handleCreate(r.excelRow);
+    for (let i = 0; i < notFound.length; i++) {
+        const r = notFound[i];
+        await handleCreate(r.excelRow, true);
+        if (i < notFound.length - 1) await new Promise(res => setTimeout(res, 400));
     }
     toast.success('Importación finalizada');
+    queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
   };
 
   const handleApplyAll = async () => {
@@ -464,13 +461,15 @@ export default function ValidacionExcel() {
     let successCount = 0;
     let failCount = 0;
 
-    for (const r of withDiffs) {
+    for (let i = 0; i < withDiffs.length; i++) {
+      const r = withDiffs[i];
       try {
-        await handleApply(r.employee.id, r.diffs);
+        await handleApply(r.employee.id, r.diffs, true);
         successCount++;
       } catch (err) {
         failCount++;
       }
+      if (i < withDiffs.length - 1) await new Promise(res => setTimeout(res, 400));
     }
     
     if (failCount > 0) {
@@ -478,6 +477,7 @@ export default function ValidacionExcel() {
     } else {
       toast.success(`Se aplicaron ${successCount} correcciones exitosamente.`);
     }
+    queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
   };
 
   const handleExportReport = () => {

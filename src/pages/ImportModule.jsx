@@ -656,6 +656,24 @@ export default function ImportModule() {
   const localDateWarningRows = localEmployees.filter(e => (e.warnings || []).some(w => w.includes('Fecha nacimiento descartada')));
   const localDateWarningCount = localDateWarningRows.length;
 
+  const handleExportWarnings = () => {
+    const rows = localEmployees
+      .filter(emp => (emp.warnings || []).length > 0)
+      .flatMap(emp => emp.warnings.map((warning) => ({
+        Hoja: emp.sheetName,
+        Funcionario: emp.data?.full_name || '',
+        RUT: emp.data?.rut || '',
+        Advertencia: warning,
+      })));
+
+    if (!rows.length) return;
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Advertencias');
+    XLSX.writeFile(wb, `advertencias_importacion_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   const isRunning = status === 'running';
   const isError = status === 'error';
   const isDone = status === 'done';
@@ -790,6 +808,11 @@ export default function ImportModule() {
                 {localErrorCount > 0 && <Badge variant="destructive" className="bg-red-100 text-red-800">{localErrorCount} con errores</Badge>}
                 {localWarningsCount > 0 && <Badge variant="outline" className="bg-amber-50 text-amber-900 border-amber-200">{localWarningsCount} con advertencias</Badge>}
                 {localDateWarningCount > 0 && <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">{localDateWarningCount} con fecha descartada</Badge>}
+                {localWarningsCount > 0 && (
+                  <Button size="sm" variant="outline" onClick={handleExportWarnings}>
+                    Exportar advertencias
+                  </Button>
+                )}
               </div>
 
               {localDateWarningCount > 0 && (

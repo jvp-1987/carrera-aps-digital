@@ -453,6 +453,40 @@ export default function ValidacionExcel() {
     queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
   };
 
+  const handleEmergencySync = async () => {
+    if (!results || results.length === 0) return toast.error('Carga un Excel primero');
+    if (!window.confirm('CUIDADO: Esto forzará la actualización de Fecha de Nacimiento y Nacionalidad para TODOS los funcionarios encontrados, saltándose la validación visual. Tardará varios minutos. ¿Estás seguro?')) return;
+    
+    // Solo procesar los que fueron encontrados en BD
+    const toUpdate = results.filter(r => r.employee);
+    toast.info(`Iniciando sincronización forzada de ${toUpdate.length} registros...`);
+    
+    let ok = 0, errs = 0;
+    setApplyingId('emergency'); // Lock UI
+
+    for (let i = 0; i < toUpdate.length; i++) {
+       const r = toUpdate[i];
+       const excelValBirth = toISODate(r.excelRow.birth_date);
+       let excelValNat = norm(r.excelRow.nationality, true);
+       excelValNat = excelValNat.toLowerCase() === 'chilena' ? 'Chilena' : String(r.excelRow.nationality || '').trim();
+
+       const patch = {};
+       if (excelValBirth) patch.birth_date = excelValBirth;
+       if (excelValNat) patch.nationality = excelValNat;
+
+       if (Object.keys(patch).length > 0) {
+           try {
+               await base44.entities.Employee.update(r.employee.id, patch);
+               ok++;
+           } catch (e) { errs++; }
+           await new Promise(res => setTimeout(res, 350)); // Throttling importantísimo
+       }
+    }
+    setApplyingId(null);
+    toast.success(`Sincronización de Emergencia finalizada: ${ok} actualizados, ${errs} errores.`);
+    queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
+  };
+
   const handleApplyAll = async () => {
     const withDiffs = (results || []).filter(r => Object.keys(r.diffs).length > 0 && r.employee);
     if (!withDiffs.length) { toast.info('No hay diferencias para aplicar'); return; }
@@ -593,14 +627,18 @@ export default function ValidacionExcel() {
               </Button>
             )}
             {stats.diffs > 0 && (
-              <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={handleApplyAll}>
+              <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={handleApplyAll} disabled={applyingId === 'emergency'}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Aplicar todas las correcciones ({stats.diffs})
               </Button>
             )}
-            <Button variant="outline" className="border-slate-300 text-slate-600" onClick={handleExportReport}>
+            <Button variant="outline" className="border-slate-300 text-slate-600" onClick={handleExportReport} disabled={applyingId === 'emergency'}>
               <Download className="w-4 h-4 mr-2" />
               Exportar Informe
+            </Button>
+            <Button variant="destructive" className="ml-auto" onClick={handleEmergencySync} disabled={applyingId === 'emergency'}>
+              {applyingId === 'emergency' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <AlertTriangle className="w-4 h-4 mr-2" />}
+              {applyingId === 'emergency' ? 'Sincronizando...' : 'Forzar Sincronización (Emergencia)'}
             </Button>
           </div>
 

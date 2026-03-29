@@ -88,7 +88,7 @@ export function calculateNextBienioDate(servicePeriods, totalLeaveDays, currentB
   if (isNaN(start.getTime())) return null;
   const daysNeeded = (currentBienios + 1) * DAYS_PER_BIENIO + (totalLeaveDays || 0);
   const targetDate = new Date(start);
-  targetDate.setDate(targetDate.getDate() + daysNeeded);
+  targetDate.setUTCDate(targetDate.getUTCDate() + daysNeeded);
   return targetDate.toISOString().split('T')[0];
 }
 

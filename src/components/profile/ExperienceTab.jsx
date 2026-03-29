@@ -30,12 +30,12 @@ function findOverlaps(newStart, newEnd, existingPeriods, excludeId = null) {
   });
 }
 
-// Calcula días usando meses de 30 días (para bienio)
+// Calcula días inclusive entre dos fechas (igual que getDaysFromPeriod)
 function calcDays30(startStr, endStr) {
   const start = new Date(startStr);
   const end = endStr ? new Date(endStr) : new Date();
   const diffMs = end - start;
-  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1);
 }
 
 export default function ExperienceTab({ employee }) {
@@ -50,6 +50,7 @@ export default function ExperienceTab({ employee }) {
   // Estado de solapamiento detectado (pendiente de resolución)
   const [overlapInfo, setOverlapInfo] = useState(null); // { overlappingPeriod, suggestedDate }
   const [overlapDismissed, setOverlapDismissed] = useState(false);
+  const [preAdjustDate, setPreAdjustDate] = useState(null); // fecha inicio antes del ajuste automático
 
   const { data: periods = [] } = useQuery({
     queryKey: ['service-periods', employee.id],
@@ -101,6 +102,7 @@ export default function ExperienceTab({ employee }) {
     setEditingId(null);
     setOverlapInfo(null);
     setOverlapDismissed(false);
+    setPreAdjustDate(null);
     setForm({ period_type: '', start_date: '', end_date: '', institution: '', resolution_number: '', days_count: 0, jornada: 'Completa' });
   };
 
@@ -161,7 +163,7 @@ export default function ExperienceTab({ employee }) {
       let suggested = null;
       if (latestEnd) {
         const d = new Date(latestEnd);
-        d.setDate(d.getDate() + 1);
+        d.setUTCDate(d.getUTCDate() + 1);
         suggested = d.toISOString().split('T')[0];
       }
       setOverlapInfo({ overlappingPeriod: latest, suggestedDate: suggested });
@@ -173,6 +175,7 @@ export default function ExperienceTab({ employee }) {
   // Ajuste automático: mover fecha inicio a D+1 del periodo solapado
   const handleAutoAdjust = () => {
     if (!overlapInfo?.suggestedDate) return;
+    setPreAdjustDate(form.start_date); // guardar fecha original antes de ajustar
     setForm(p => ({ ...p, start_date: overlapInfo.suggestedDate }));
     setOverlapInfo(null);
     setOverlapDismissed(true);
@@ -189,10 +192,14 @@ export default function ExperienceTab({ employee }) {
       }
     }
 
-    const originalStartDate = form.start_date;
-    const wasAdjusted = overlapDismissed; // se ajustó automáticamente
-    const start = new Date(form.start_date);
-    const end = form.end_date ? new Date(form.end_date) : new Date();
+    // Validar que la fecha de término no sea anterior a la de inicio
+    if (form.end_date && form.end_date < form.start_date) {
+      toast.error('La fecha de término no puede ser anterior a la fecha de inicio');
+      return;
+    }
+
+    const wasAdjusted = overlapDismissed;
+    const originalStartDate = wasAdjusted && preAdjustDate ? preAdjustDate : form.start_date;
     const days = calcDays30(form.start_date, form.end_date || null);
 
     // Verificar si aún hay solapamiento activo (no resuelto)

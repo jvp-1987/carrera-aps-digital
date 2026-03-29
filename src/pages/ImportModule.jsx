@@ -48,6 +48,13 @@ function normalizeDateString(dateVal) {
   // DD/MM/YYYY or DD-MM-YYYY
   const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (match) return `${match[3]}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`;
+  // DD/MM/YY (años cortos)
+  const shortMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+  if (shortMatch) {
+    const year = parseInt(shortMatch[3], 10);
+    const fullYear = year > 40 ? 1900 + year : 2000 + year;
+    return `${fullYear}-${shortMatch[2].padStart(2,'0')}-${shortMatch[1].padStart(2,'0')}`;
+  }
   // Numeric string serial (e.g. "29232")
   if (/^\d+$/.test(str)) {
     const num = parseInt(str, 10);
@@ -324,15 +331,16 @@ function parseCarreraSheet(sheet, sheetName) {
   // Mapear datos personales
   const getKV = (...keys) => {
     for (const k of keys) {
-      const found = Object.entries(kvData).find(([key]) => key.toLowerCase().includes(k.toLowerCase()));
+      const kNorm = norm(k);
+      const found = Object.entries(kvData).find(([key]) => key.includes(kNorm));
       if (found && found[1]) return found[1];
     }
     return '';
   };
 
   const rut = normalizeRUT(getKV('rut'));
-  const position = getKV('cargo', 'puesto', 'especialidad', 'funcion', 'función', 'profesion', 'profesión', ' Profesión');
-  const profession = getKV('profesion', 'profesión', ' Profesión', 'titulo', 'título', 'prof', 'cargo', 'puesto');
+  const position = (getKV('cargo', 'puesto', 'especialidad', 'funcion', 'función', 'profesion', 'profesión', ' Profesión') || '').toUpperCase();
+  const profession = (getKV('profesion', 'profesión', ' Profesión', 'titulo', 'título', 'prof', 'cargo', 'puesto') || '').toUpperCase();
   const universidad = getKV('universidad');
   const birth_date = getKV('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nac', 'f. nac');
   const nationality = getKV('nacionalidad', 'pais', 'país', 'nacion', 'nación', 'nac.', 'pais de origen');
@@ -566,6 +574,7 @@ export default function ImportModule() {
       let finalValue = value;
       if (field === 'rut') finalValue = normalizeRUT(value);
       else if (field === 'nationality') finalValue = normalizeNationality(value);
+      else if (field === 'position' || field === 'profession') finalValue = (value || '').toUpperCase();
       else if (['current_level', 'bienios_count'].includes(field)) {
         finalValue = value === '' ? null : parseInt(value) || value;
       } else if (field === 'total_points') {

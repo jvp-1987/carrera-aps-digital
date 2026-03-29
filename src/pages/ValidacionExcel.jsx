@@ -10,11 +10,16 @@ import { toast } from 'sonner';
 
 // ── Normalización ──────────────────────────────────────────────
 function norm(v, isNationality = false) {
-  let val = (v ?? '').toString().trim().toLowerCase()
+  let val = (v ?? '').toString().trim()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ');
-  if (isNationality && (val === 'chile' || val === 'chilena' || val === 'chileno' || val === 'chilenos' || val === 'chilenas')) return 'chilena';
-  return val;
+  
+  if (isNationality) {
+    const l = val.toLowerCase();
+    if (l === 'chile' || l === 'chilena' || l === 'chileno' || l === 'chilenos' || l === 'chilenas' || l === 'cl') return 'Chilena';
+    return val; // Mantener original (ej: "Extranjera") pero trim
+  }
+  return val.toLowerCase();
 }
 function normRut(v) {
   return (v ?? '').toString().replace(/\./g, '').replace(/-/g, '').replace(/\s/g, '').toUpperCase();
@@ -83,8 +88,8 @@ const COMPARE_FIELDS = [
   { key: 'rut',            label: 'RUT',              normalize: normRut },
   { key: 'birth_date',     label: 'Fecha Nacimiento', normalize: toISODate },
   { key: 'category',       label: 'Categoría',        normalize: norm },
-  { key: 'position',       label: 'Cargo',            normalize: norm },
-  { key: 'profession',     label: 'Profesión',        normalize: norm },
+  { key: 'position',       label: 'Cargo',            normalize: val => norm(val).toUpperCase() },
+  { key: 'profession',     label: 'Profesión',        normalize: val => norm(val).toUpperCase() },
   { key: 'department',     label: 'Establecimiento',  normalize: norm },
   { key: 'nationality',    label: 'Nacionalidad',     normalize: val => norm(val, true) },
   { key: 'contract_type',  label: 'Tipo Contrato',    normalize: norm },
@@ -146,12 +151,11 @@ function compareEmployee(excelRow, sysEmployee) {
     }
 
     if (excelVal && sysVal && excelVal !== sysVal) {
-      // Guardamos tanto el valor real (ISO) para el patch como el display para el usuario
-      const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : String(rawExcel).trim();
-      const displaySys   = field.key === 'birth_date' ? formatToDMY(sysVal)   : String(rawSys).trim();
+      const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : excelVal;
+      const displaySys   = field.key === 'birth_date' ? formatToDMY(sysVal)   : sysVal;
       diffs[field.key] = { excel: displayExcel, system: displaySys, raw: excelVal };
     } else if (excelVal && !sysVal) {
-      const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : String(rawExcel).trim();
+      const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : excelVal;
       diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true, raw: excelVal };
     }
   }

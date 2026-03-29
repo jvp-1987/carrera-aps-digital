@@ -37,6 +37,12 @@ function normalizeDateString(dateVal) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
   const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (match) return `${match[3]}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`;
+  const shortMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+  if (shortMatch) {
+    const year = parseInt(shortMatch[3], 10);
+    const fullYear = year > 40 ? 1900 + year : 2000 + year;
+    return `${fullYear}-${shortMatch[2].padStart(2,'0')}-${shortMatch[1].padStart(2,'0')}`;
+  }
   if (/^\d+$/.test(str)) {
     const num = parseInt(str, 10);
     if (num > 10000 && num < 200000) {

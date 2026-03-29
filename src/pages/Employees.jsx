@@ -29,7 +29,6 @@ export default function Employees() {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewMode, setViewMode] = useState('table');
   const [hideInactive, setHideInactive] = useState(false);
-  const [isNormalizing, setIsNormalizing] = useState(false);
 
   // Logging
   logger.info(`Employees page loaded with ${employees.length} employees`);
@@ -116,38 +115,6 @@ export default function Employees() {
     logger.info(`Employee deleted successfully: ${emp.id}`);
   };
 
-  const handleNormalizeUppercase = async () => {
-    if (!window.confirm('¿Deseas normalizar TODOS los Cargos y Profesiones a MAYÚSCULAS en la base de datos? Esto puede tomar un momento.')) return;
-    setIsNormalizing(true);
-    let updated = 0;
-    let errors = 0;
-    
-    for (const emp of employees) {
-      const currentProf = String(emp.profession || '').trim();
-      const currentPos = String(emp.position || '').trim();
-      const upperProf = currentProf.toUpperCase();
-      const upperPos = currentPos.toUpperCase();
-      
-      if (currentProf !== upperProf || currentPos !== upperPos) {
-        try {
-          await base44.entities.Employee.update(emp.id, {
-            profession: upperProf,
-            position: upperPos
-          });
-          updated++;
-        } catch (e) {
-          logger.error('Error actualizando a mayúscula', e);
-          errors++;
-        }
-        // Throttling para no colapsar la base de datos
-        await new Promise(r => setTimeout(r, 200));
-      }
-    }
-    setIsNormalizing(false);
-    toast.success(`Normalización terminada. ${updated} actualizados, ${errors} errores.`);
-    // Opcional: forzar recarga (window.location.reload o refetch si estuviera expuesto)
-  };
-
   // Loading state
   if (isLoading) {
     return (
@@ -227,16 +194,7 @@ export default function Employees() {
                 {filteredEmployees.length} de {employees.length} funcionarios
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNormalizeUppercase}
-                disabled={isNormalizing}
-                className="flex items-center gap-2 border-indigo-300 text-indigo-700 bg-indigo-50"
-              >
-                {isNormalizing ? 'Actualizando BD...' : 'Aa -> AA (Normalizar Base de Datos)'}
-              </Button>
+            <div className="flex items-center gap-4">
               <Button
                 variant="outline"
                 size="sm"
@@ -246,14 +204,14 @@ export default function Employees() {
                 <Download className="w-4 h-4" />
                 Exportar Excel
               </Button>
-              <label className="flex items-center gap-2 cursor-pointer ml-2">
+              <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={hideInactive}
                 onChange={e => setHideInactive(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600"
+                className="w-5 h-5 rounded border-slate-300 text-indigo-600"
               />
-              <span className="text-sm text-slate-600 font-medium whitespace-nowrap">Ocultar inactivos</span>
+              <span className="text-sm text-slate-600 font-medium">Ocultar inactivos</span>
             </label>
             </div>
           </div>

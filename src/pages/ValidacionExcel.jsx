@@ -90,7 +90,10 @@ function formatToDMY(isoStr) {
 const COMPARE_FIELDS = [
   { key: 'full_name',      label: 'Nombre',           normalize: norm, formatForSystem: val => String(val || '').trim() },
   { key: 'rut',            label: 'RUT',              normalize: normRut, formatForSystem: normRut },
-  { key: 'birth_date',     label: 'Fecha Nacimiento', normalize: toISODate, formatForSystem: toISODate },
+  { key: 'birth_date',     label: 'Fecha Nac.',       normalize: toISODate,      formatForSystem: val => {
+      const parsed = toISODate(val);
+      return parsed ? `${parsed} 12:00:00.000Z` : '';
+  }},
   { key: 'category',       label: 'Categoría',        normalize: norm, formatForSystem: val => {
       const v = String(val || '').trim().toUpperCase();
       const match = v.match(/\b([A-F])\b/);
@@ -481,7 +484,7 @@ export default function ValidacionExcel() {
        excelValNat = excelValNat.toLowerCase() === 'chilena' ? 'Chilena' : String(r.excelRow.nationality || '').trim();
 
        const patch = {};
-       if (excelValBirth) patch.birth_date = excelValBirth;
+       if (excelValBirth) patch.birth_date = `${excelValBirth} 12:00:00.000Z`;
        if (excelValNat) patch.nationality = excelValNat;
 
        if (Object.keys(patch).length > 0) {

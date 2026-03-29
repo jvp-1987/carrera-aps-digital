@@ -380,9 +380,32 @@ function validateEmployee(emp) {
 function buildWarnings(emp) {
   const warnings = [];
   const rawBirth = String(emp.birth_date_raw || '').trim();
+  const rawHeader = String(emp.header_raw || '').trim();
+
   if (rawBirth && !emp.birth_date) {
     warnings.push(`Fecha nacimiento descartada: "${rawBirth}"`);
   }
+
+  if (rawHeader) {
+    if (/pts/i.test(rawHeader) && (emp.total_points === null || emp.total_points === undefined)) {
+      warnings.push(`Puntaje total no interpretable en encabezado: "${rawHeader}"`);
+    }
+    if (/bienios/i.test(rawHeader) && (emp.bienios_count === null || emp.bienios_count === undefined)) {
+      warnings.push(`Bienios no interpretables en encabezado: "${rawHeader}"`);
+    }
+  }
+
+  if (emp.total_points !== null && emp.total_points !== undefined && Number(emp.total_points) < 0) {
+    warnings.push(`Puntaje total negativo (${emp.total_points})`);
+  }
+
+  if (emp.bienios_count !== null && emp.bienios_count !== undefined) {
+    const bienios = Number(emp.bienios_count);
+    if (!Number.isInteger(bienios) || bienios < 0) {
+      warnings.push(`Bienios en formato no esperado (${emp.bienios_count})`);
+    }
+  }
+
   return warnings;
 }
 
@@ -418,6 +441,7 @@ function EmployeeCard({ emp, rutMap, onEdit }) {
   return (
     <div className={`border rounded-lg ${hasErrors ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
       <div className="px-4 py-2.5 space-y-2">
+    header_raw: headerStr,
         <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between text-left hover:bg-slate-50 rounded p-1">
           <div className="flex items-center gap-3">
             {hasErrors
@@ -598,12 +622,19 @@ export default function ImportModule() {
       else if (field === 'nationality') finalValue = normalizeNationality(value);
       else if (field === 'position' || field === 'profession') finalValue = (value || '').toUpperCase();
       else if (['current_level', 'bienios_count'].includes(field)) {
-        finalValue = value === '' ? null : parseInt(value) || value;
+        const parsed = parseInt(value, 10);
+        finalValue = value === '' ? null : (Number.isNaN(parsed) ? value : parsed);
       } else if (field === 'total_points') {
-        finalValue = value === '' ? null : parseFloat(value) || value;
+        const parsed = parseFloat(value);
+        finalValue = value === '' ? null : (Number.isNaN(parsed) ? value : parsed);
       }
       const newData = { ...emp.data, [field]: finalValue };
-      return { ...emp, data: newData, errors: validateEmployee(newData) };
+      return {
+        ...emp,
+        data: newData,
+        errors: validateEmployee(newData),
+        warnings: buildWarnings(newData),
+      };
     }));
   };
 
@@ -621,6 +652,7 @@ export default function ImportModule() {
 
   const localValidCount = localEmployees.filter(e => e.errors.length === 0).length;
   const localErrorCount = localEmployees.length - localValidCount;
+  const localWarningsCount = localEmployees.filter(e => (e.warnings || []).length > 0).length;
   const localDateWarningRows = localEmployees.filter(e => (e.warnings || []).some(w => w.includes('Fecha nacimiento descartada')));
   const localDateWarningCount = localDateWarningRows.length;
 
@@ -756,6 +788,7 @@ export default function ImportModule() {
                 <span className="text-sm font-semibold text-slate-700">{localEmployees.length} funcionarios detectados</span>
                 <Badge variant="secondary" className="bg-green-100 text-green-800">{localValidCount} válidos</Badge>
                 {localErrorCount > 0 && <Badge variant="destructive" className="bg-red-100 text-red-800">{localErrorCount} con errores</Badge>}
+                {localWarningsCount > 0 && <Badge variant="outline" className="bg-amber-50 text-amber-900 border-amber-200">{localWarningsCount} con advertencias</Badge>}
                 {localDateWarningCount > 0 && <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">{localDateWarningCount} con fecha descartada</Badge>}
               </div>
 

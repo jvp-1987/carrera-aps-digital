@@ -1,0 +1,121 @@
+{
+  "name": "Employee",
+  "type": "object",
+  "properties": {
+    "rut": {
+      "type": "string",
+      "description": "RUT del funcionario"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Nombre completo"
+    },
+    "birth_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de nacimiento"
+    },
+    "nationality": {
+      "type": "string",
+      "description": "Nacionalidad del funcionario"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "description": "Categor\u00eda funcionaria (A=M\u00e9dicos, B=Profesionales, C-F=T\u00e9cnicos/Administrativos/Auxiliares)"
+    },
+    "current_level": {
+      "type": "integer",
+      "description": "Nivel actual en el escalaf\u00f3n (1-15)"
+    },
+    "position": {
+      "type": "string",
+      "description": "Cargo actual"
+    },
+    "department": {
+      "type": "string",
+      "description": "Unidad o establecimiento"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de ingreso inicial"
+    },
+    "contract_type": {
+      "type": "string",
+      "enum": [
+        "Planta",
+        "Plazo Fijo",
+        "Honorarios",
+        "Reemplazo"
+      ],
+      "description": "Tipo de contrato actual"
+    },
+    "email": {
+      "type": "string",
+      "description": "Correo electr\u00f3nico"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Tel\u00e9fono"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Foto del funcionario"
+    },
+    "total_experience_days": {
+      "type": "integer",
+      "description": "Total d\u00edas de experiencia acumulada"
+    },
+    "total_leave_days": {
+      "type": "integer",
+      "description": "Total d\u00edas de permiso sin goce descontados"
+    },
+    "bienios_count": {
+      "type": "integer",
+      "description": "Cantidad de bienios reconocidos"
+    },
+    "bienio_points": {
+      "type": "number",
+      "description": "Puntaje acumulado por bienios"
+    },
+    "next_bienio_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha estimada del pr\u00f3ximo bienio"
+    },
+    "training_points": {
+      "type": "number",
+      "description": "Puntaje acumulado de capacitaci\u00f3n"
+    },
+    "postitle_percentage": {
+      "type": "number",
+      "description": "Porcentaje de asignaci\u00f3n de post\u00edtulo (0, 5, 10, 15)"
+    },
+    "total_points": {
+      "type": "number",
+      "description": "Puntaje total (experiencia + capacitaci\u00f3n)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Activo",
+        "Inactivo",
+        "Licencia"
+      ],
+      "default": "Activo"
+    }
+  },
+  "required": [
+    "rut",
+    "full_name",
+    "category"
+  ]
+}

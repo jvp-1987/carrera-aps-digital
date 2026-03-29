@@ -38,6 +38,8 @@ export default function EmployeeTableView({ employees }) {
             <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">Funcionario</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">Clasificación</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">Asignación</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">Fecha Nac.</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">Nacionalidad</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">Contrato</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">Experiencia</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">Capacitación</th>
@@ -93,6 +95,20 @@ export default function EmployeeTableView({ employees }) {
                     {emp.department || 'Sin Unidad'}
                   </span>
                 </div>
+              </td>
+
+              {/* Fecha Nacimiento */}
+              <td className="px-3 py-3 whitespace-nowrap">
+                <span className="text-xs text-slate-600 font-mono">
+                  {emp.birth_date ? emp.birth_date.split('-').reverse().join('/') : '—'}
+                </span>
+              </td>
+
+              {/* Nacionalidad */}
+              <td className="px-3 py-3 whitespace-nowrap">
+                <span className="text-xs text-slate-600">
+                  {emp.nationality || '—'}
+                </span>
               </td>
 
               {/* Contrato */}

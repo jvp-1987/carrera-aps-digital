@@ -4,7 +4,6 @@ import { base44 } from '@/api/base44Client';
 import { Bell, X, TrendingUp, Clock, GraduationCap, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { checkPromotion, daysUntilClosure } from '@/components/calculations';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 function buildNotifications(employees, trainings, resolutions) {

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, CheckCircle2, Loader, RefreshCw, Loader2, RotateCcw, Wrench, Copy, Trash2, ClipboardList } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader, RefreshCw, Loader2, Wrench, Copy, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { useAudit } from '@/lib/AuditContext';

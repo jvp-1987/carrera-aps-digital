@@ -1,11 +1,10 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   Users, LayoutDashboard, GraduationCap, FileText, 
-  Bell, Shield, ChevronLeft, ChevronRight, LogOut, TrendingUp, UploadCloud, Umbrella, ClipboardList, AlertTriangle, RotateCcw, DollarSign, CheckSquare
+  Bell, Shield, ChevronLeft, ChevronRight, LogOut, TrendingUp, UploadCloud, Umbrella, ClipboardList, DollarSign, CheckSquare
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Button } from '@/components/ui/button';
 import NotificationBell from '@/components/NotificationBell';
 import ImportProgressBanner from '@/components/ImportProgressBanner';
 import AuditProgressBanner from '@/components/AuditProgressBanner';

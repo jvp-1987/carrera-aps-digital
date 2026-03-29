@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, GraduationCap, FileUp, Lock, AlertCircle, Pencil, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Plus, GraduationCap, FileUp, Lock, Pencil, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR, getMaxTrainingPoints, parseNumeric, calculateCurrentLevel } from '@/components/calculations';
 

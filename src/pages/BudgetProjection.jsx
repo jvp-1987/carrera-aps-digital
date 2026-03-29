@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { TrendingUp, DollarSign, Users, AlertTriangle, FileText, Calendar } from 'lucide-react';
+import { TrendingUp, DollarSign, AlertTriangle, FileText, Calendar } from 'lucide-react';
 import { checkPromotion } from '@/components/calculations';
 import { getSueldoBase, formatCLP } from '@/constants/salaryTable';
 

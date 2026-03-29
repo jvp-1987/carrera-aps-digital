@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SALARY_TABLE, SALARY_YEAR, CATEGORY_LABELS, getSueldoBase, formatCLP } from '@/constants/salaryTable';
+import { SALARY_YEAR, CATEGORY_LABELS, getSueldoBase, formatCLP } from '@/constants/salaryTable';
 
 const CATEGORIES = ['A', 'B', 'C', 'D', 'E', 'F'];
 const LEVELS = Array.from({ length: 15 }, (_, i) => i + 1);

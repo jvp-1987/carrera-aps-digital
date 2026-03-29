@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { Trophy, Briefcase, Star, Clock, GraduationCap, Award, MapPin } from 'lucide-react';
+import { Trophy, Star, Clock, GraduationCap, Award } from 'lucide-react';
 
 const categoryColors = {
   A: 'bg-violet-100 text-violet-700 ring-1 ring-violet-200',

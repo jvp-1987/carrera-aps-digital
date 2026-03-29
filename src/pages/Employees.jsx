@@ -7,14 +7,10 @@ import StatsCards from '@/components/employees/StatsCards';
 import ViewToggle from '@/components/employees/ViewToggle';
 import SearchFiltersBar from '@/components/employees/SearchFiltersBar';
 import DuplicatesPanel from '@/components/employees/DuplicatesPanel';
-import { categoryLabels, categoryColors, normalizeRUT } from '@/components/employees/categoryUtils';
+import { categoryLabels, normalizeRUT } from '@/components/employees/categoryUtils';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { toast } from 'sonner';
 
 import EmployeeTableView from '@/components/employees/EmployeeTableView';
 import EmployeeGroupView from '@/components/employees/EmployeeGroupView';

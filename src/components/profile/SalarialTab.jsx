@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, DollarSign, TrendingUp, CheckCircle } from 'lucide-react';
 
-import { getSueldoBase, formatCLP as fmtCLP, SALARY_TABLE, SALARY_YEAR } from '@/constants/salaryTable';
+import { getSueldoBase, formatCLP as fmtCLP, SALARY_TABLE } from '@/constants/salaryTable';
 
 export { getSueldoBase };
 

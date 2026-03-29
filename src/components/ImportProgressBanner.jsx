@@ -1,6 +1,6 @@
 import { useImport } from '@/lib/ImportContext';
 import { Link } from 'react-router-dom';
-import { Loader2, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 export default function ImportProgressBanner() {
   const { state, validCount, cancelImport } = useImport();

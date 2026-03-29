@@ -11,7 +11,6 @@ import {
   Upload, CheckCircle2, XCircle, AlertTriangle,
   FileSpreadsheet, RotateCcw, ClipboardCheck, User, ChevronDown, ChevronRight
 } from 'lucide-react';
-import { toast } from 'sonner';
 
 // ── Helpers ─────────────────────────────────────────────────────
 function normalizeRUT(rut) {

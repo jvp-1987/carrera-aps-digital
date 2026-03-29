@@ -79,20 +79,20 @@ describe('calculateBienios', () => {
     expect(calculateBienios(0)).toBe(0);
   });
 
-  it('729 días = 0 bienios (falta 1 día)', () => {
-    expect(calculateBienios(729)).toBe(0);
+  it('719 días = 0 bienios (falta 1 día)', () => {
+    expect(calculateBienios(719)).toBe(0);
   });
 
-  it('730 días = 1 bienio exacto', () => {
-    expect(calculateBienios(730)).toBe(1);
+  it('720 días = 1 bienio exacto', () => {
+    expect(calculateBienios(720)).toBe(1);
   });
 
-  it('1460 días = 2 bienios', () => {
-    expect(calculateBienios(1460)).toBe(2);
+  it('1440 días = 2 bienios', () => {
+    expect(calculateBienios(1440)).toBe(2);
   });
 
-  it('3650 días = 5 bienios', () => {
-    expect(calculateBienios(3650)).toBe(5);
+  it('3600 días = 5 bienios', () => {
+    expect(calculateBienios(3600)).toBe(5);
   });
 });
 
@@ -151,10 +151,37 @@ describe('calculateTrainingPoints', () => {
 });
 
 describe('getMaxTrainingPoints', () => {
-  it('categoría A → 4200', () => { expect(getMaxTrainingPoints('A')).toBe(4200); });
-  it('categoría B → 4200', () => { expect(getMaxTrainingPoints('B')).toBe(4200); });
-  it('categoría C → 3450', () => { expect(getMaxTrainingPoints('C')).toBe(3450); });
-  it('categoría F → 3450', () => { expect(getMaxTrainingPoints('F')).toBe(3450); });
+  it('categoría A/B, periodo 1 (0 días) → 140', () => { expect(getMaxTrainingPoints('A')).toBe(140); });
+  it('categoría C/F, periodo 1 (0 días) → 115', () => { expect(getMaxTrainingPoints('C')).toBe(115); });
+  it('categoría A/B, periodo 30 (30 años) → 3825', () => { expect(getMaxTrainingPoints('B', 30 * 360)).toBe(3825); });
+  it('categoría C/F, periodo 30 (30 años) → 3153', () => { expect(getMaxTrainingPoints('F', 30 * 360)).toBe(3153); });
+
+  it('periodo 10 (9 años) respeta tabla oficial acumulada', () => {
+    expect(getMaxTrainingPoints('A', 9 * 360)).toBe(1350);
+    expect(getMaxTrainingPoints('C', 9 * 360)).toBe(1100);
+  });
+
+  it('periodo 20 (19 años) respeta tabla oficial acumulada', () => {
+    expect(getMaxTrainingPoints('B', 19 * 360)).toBe(2600);
+    expect(getMaxTrainingPoints('F', 19 * 360)).toBe(2135);
+  });
+
+  it('periodo 26 (25 años) respeta tabla oficial acumulada', () => {
+    expect(getMaxTrainingPoints('A', 25 * 360)).toBe(3345);
+    expect(getMaxTrainingPoints('D', 25 * 360)).toBe(2747);
+  });
+
+  it('cambio de periodo ocurre al cumplir 360 días', () => {
+    expect(getMaxTrainingPoints('A', 359)).toBe(140);
+    expect(getMaxTrainingPoints('A', 360)).toBe(280);
+    expect(getMaxTrainingPoints('C', 359)).toBe(115);
+    expect(getMaxTrainingPoints('C', 360)).toBe(230);
+  });
+
+  it('años superiores al periodo 30 quedan capados al máximo oficial', () => {
+    expect(getMaxTrainingPoints('A', 100 * 360)).toBe(3825);
+    expect(getMaxTrainingPoints('C', 100 * 360)).toBe(3153);
+  });
 });
 
 // ── POSTÍTULO ──────────────────────────────────────────────────────────────

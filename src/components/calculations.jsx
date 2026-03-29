@@ -2,6 +2,9 @@
 // Motor de Cálculo - Carrera Funcionaria Ley 19.378
 // ============================================================
 
+const DAYS_PER_BIENIO = 720;
+const DAYS_PER_YEAR = 360;
+
 export function parseNumeric(val) {
   if (val === null || val === undefined || val === '') return 0;
   if (typeof val === 'number') return val;
@@ -50,7 +53,7 @@ export function getBienioIncrement(category, bienioNumber) {
 
 // ── EXPERIENCIA ──────────────────────────────────────────────
 export function calculateBienios(effectiveDays) {
-  return Math.floor(effectiveDays / 730);
+  return Math.floor(effectiveDays / DAYS_PER_BIENIO);
 }
 
 // Calcula días reales de un periodo a partir de sus fechas
@@ -83,7 +86,7 @@ export function calculateNextBienioDate(servicePeriods, totalLeaveDays, currentB
 
   const start = new Date(firstStart);
   if (isNaN(start.getTime())) return null;
-  const daysNeeded = (currentBienios + 1) * 730 + (totalLeaveDays || 0);
+  const daysNeeded = (currentBienios + 1) * DAYS_PER_BIENIO + (totalLeaveDays || 0);
   const targetDate = new Date(start);
   targetDate.setDate(targetDate.getDate() + daysNeeded);
   return targetDate.toISOString().split('T')[0];
@@ -138,7 +141,7 @@ const TRAINING_ACCUMULATED_TABLE = {
 };
 
 export function getMaxTrainingPoints(category, totalDays = 0) {
-  const years = Math.floor(totalDays / 365);
+  const years = Math.floor(totalDays / DAYS_PER_YEAR);
   // Periodo 1 es año 0-1, Periodo 2 es año 1-2, etc. (Tope acumulado al finalizar el año)
   const period = Math.min(30, Math.max(1, years + 1));
   const isAB = (category === 'A' || category === 'B');
@@ -272,8 +275,8 @@ export function daysUntilClosure() {
 
 export function formatDaysToYMD(totalDays) {
   if (!totalDays || totalDays <= 0) return '0 días';
-  const years = Math.floor(totalDays / 365);
-  const remainingDaysAfterYears = totalDays % 365;
+  const years = Math.floor(totalDays / DAYS_PER_YEAR);
+  const remainingDaysAfterYears = totalDays % DAYS_PER_YEAR;
   const months = Math.floor(remainingDaysAfterYears / 30);
   const days = remainingDaysAfterYears % 30;
 

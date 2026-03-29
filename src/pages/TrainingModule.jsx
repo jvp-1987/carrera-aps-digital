@@ -63,7 +63,7 @@ export default function TrainingModule() {
     const totalTrainingPoints = allTrainings.reduce((s, t) => s + (t.calculated_points || 0), 0);
     const emp = await base44.entities.Employee.filter({ id: employeeId }).then(r => r[0]);
     if (emp) {
-      const maxPts = getMaxTrainingPoints(emp.category);
+      const maxPts = getMaxTrainingPoints(emp.category, emp.total_experience_days || 0);
       const cappedPoints = Math.min(totalTrainingPoints, maxPts);
       const totalPoints = (emp.bienio_points || 0) + cappedPoints;
       await base44.entities.Employee.update(employeeId, { training_points: cappedPoints, total_points: totalPoints });

@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, GraduationCap, FileUp, Lock, Pencil, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateTrainingPoints, calculatePostitlePercentage, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR, getMaxTrainingPoints, parseNumeric, calculateCurrentLevel } from '@/components/calculations';
+import { calculateTrainingPoints, calculateCurrentLevel, isAnnualClosurePeriod, getDurationFactor, getGradeFactor, TECHNICAL_LEVEL_FACTOR, parseNumeric } from '@/components/calculations';
+import { calculateTrainingSummary } from '@/utils/employeeScores';
 
 export default function TrainingTab({ employee }) {
   const queryClient = useQueryClient();
@@ -31,17 +32,12 @@ export default function TrainingTab({ employee }) {
     queryFn: () => base44.entities.Training.filter({ employee_id: employee.id }),
   });
 
-  const validatedTrainings = trainings.filter(t => t.status === 'Validado');
-  const rawSum = validatedTrainings.reduce((s, t) => {
-    const pts = calculateTrainingPoints(t.hours, t.grade, t.technical_level);
-    return s + pts;
-  }, 0);
-  
-  const maxPossible = getMaxTrainingPoints(employee.category, employee.total_experience_days || 0);
-  const totalTrainingPoints = Math.min(maxPossible, Math.round(rawSum * 100) / 100);
-  
-  const postitleHours = validatedTrainings.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
-  const postitlePct = calculatePostitlePercentage(employee.category, postitleHours);
+  const trainingSummary = calculateTrainingSummary(employee, trainings);
+  const validatedTrainings = trainingSummary.validatedTrainings;
+  const maxPossible = trainingSummary.maxTrainingPoints;
+  const totalTrainingPoints = trainingSummary.trainingPoints;
+  const postitleHours = trainingSummary.postitleHours;
+  const postitlePct = trainingSummary.postitlePercentage;
 
   const createTraining = useMutation({
     mutationFn: data => base44.entities.Training.create(data),
@@ -87,30 +83,19 @@ export default function TrainingTab({ employee }) {
   const validateTraining = useMutation({
     mutationFn: async (training) => {
       await base44.entities.Training.update(training.id, { status: 'Validado' });
-      // Recalcular puntos del empleado con data fresca
       const [allTrainings, freshEmployee] = await Promise.all([
         base44.entities.Training.filter({ employee_id: employee.id }),
         base44.entities.Employee.filter({ id: employee.id }).then(r => r[0])
       ]);
       const validated = allTrainings.filter(t => t.status === 'Validado' || t.id === training.id);
-      const rawPts = validated.reduce((s, t) => {
-        const pts = calculateTrainingPoints(parseFloat(t.hours || 0), parseFloat(t.grade || 0), t.technical_level);
-        return s + pts;
-      }, 0);
-      const totalPts = Math.min(
-        getMaxTrainingPoints(freshEmployee.category, freshEmployee.total_experience_days || 0),
-        Math.round(rawPts * 100) / 100
-      );
-      const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
-      const pPct = calculatePostitlePercentage(freshEmployee.category, pHours);
-      const finalTotal = Math.round(((freshEmployee.bienio_points || 0) + totalPts) * 100) / 100;
-      const currentLvl = calculateCurrentLevel(finalTotal, freshEmployee.category);
+      const updatedScores = calculateTrainingSummary(freshEmployee, validated);
+      const finalTotal = Math.round(((freshEmployee.bienio_points || 0) + updatedScores.trainingPoints) * 100) / 100;
 
       await base44.entities.Employee.update(freshEmployee.id, {
-        training_points: totalPts,
-        postitle_percentage: pPct,
+        training_points: updatedScores.trainingPoints,
+        postitle_percentage: updatedScores.postitlePercentage,
         total_points: finalTotal,
-        current_level: currentLvl,
+        current_level: calculateCurrentLevel(finalTotal, freshEmployee.category),
       });
     },
     onSuccess: () => {
@@ -122,30 +107,19 @@ export default function TrainingTab({ employee }) {
   
   const syncScores = useMutation({
     mutationFn: async () => {
-      // Obtener data fresca
       const [allTrainings, freshEmployee] = await Promise.all([
         base44.entities.Training.filter({ employee_id: employee.id }),
         base44.entities.Employee.filter({ id: employee.id }).then(r => r[0])
       ]);
       const validated = allTrainings.filter(t => t.status === 'Validado');
-      const rawPts = validated.reduce((s, t) => {
-        const pts = calculateTrainingPoints(t.hours, t.grade, t.technical_level);
-        return s + pts;
-      }, 0);
-      const totalPts = Math.min(
-        getMaxTrainingPoints(freshEmployee.category, freshEmployee.total_experience_days || 0),
-        Math.round(rawPts * 100) / 100
-      );
-      const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (t.postitle_hours || 0), 0);
-      const pPct = calculatePostitlePercentage(freshEmployee.category, pHours);
-      const finalTotal = Math.round(((freshEmployee.bienio_points || 0) + totalPts) * 100) / 100;
-      const currentLvl = calculateCurrentLevel(finalTotal, freshEmployee.category);
+      const updatedScores = calculateTrainingSummary(freshEmployee, validated);
+      const finalTotal = Math.round(((freshEmployee.bienio_points || 0) + updatedScores.trainingPoints) * 100) / 100;
 
       await base44.entities.Employee.update(freshEmployee.id, {
-        training_points: totalPts,
-        postitle_percentage: pPct,
+        training_points: updatedScores.trainingPoints,
+        postitle_percentage: updatedScores.postitlePercentage,
         total_points: finalTotal,
-        current_level: currentLvl,
+        current_level: calculateCurrentLevel(finalTotal, freshEmployee.category),
       });
     },
     onSuccess: () => {

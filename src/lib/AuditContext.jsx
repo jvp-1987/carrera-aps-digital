@@ -2,17 +2,7 @@ import { createContext, useContext, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { 
-  calculateEffectiveDays, 
-  calculateBienios, 
-  calculateBienioPoints, 
-  calculateNextBienioDate, 
-  calculatePostitlePercentage, 
-  calculateTrainingPoints,
-  getMaxTrainingPoints,
-  parseNumeric,
-  calculateCurrentLevel
-} from '@/components/calculations';
+import { calculateCareerSummary } from '@/utils/employeeScores';
 
 const AuditContext = createContext(null);
 
@@ -112,35 +102,22 @@ export function AuditProvider({ children }) {
             const empLeaves = leaveMap[emp.id] || [];
             const empTrainings = trainingMap[emp.id] || [];
             
-            const tLeave = empLeaves.reduce((s, l) => s + (parseNumeric(l.days_count) || 0), 0);
-            const eDays = calculateEffectiveDays(empPeriods, tLeave);
-            const b = calculateBienios(eDays);
-            const bp = calculateBienioPoints(emp.category, b);
-            const nbd = calculateNextBienioDate(empPeriods, tLeave, b);
-
-            const validated = empTrainings.filter(t => t.status === 'Validado');
-            const rawSum = validated.reduce((s, t) => {
-              const pts = calculateTrainingPoints(t.hours, t.grade, t.technical_level);
-              return s + pts;
-            }, 0);
-            const pHours = validated.filter(t => t.is_postitle).reduce((s, t) => s + (parseNumeric(t.postitle_hours) || 0), 0);
-            const pPct = calculatePostitlePercentage(emp.category, pHours);
-            
-            const maxPossible = getMaxTrainingPoints(emp.category, eDays);
-            const finalTrainingPts = Math.min(maxPossible, Math.round(rawSum * 100) / 100);
-            const totalPts = Math.round((bp + finalTrainingPts) * 100) / 100;
-            const currentLvl = calculateCurrentLevel(totalPts, emp.category);
+            const summary = calculateCareerSummary(emp, {
+              servicePeriods: empPeriods,
+              leaves: empLeaves,
+              trainings: empTrainings,
+            });
 
             await safeApiCall(() => base44.entities.Employee.update(emp.id, {
-              total_experience_days: eDays,
-              total_leave_days: tLeave,
-              bienios_count: b,
-              bienio_points: bp,
-              next_bienio_date: nbd,
-              training_points: finalTrainingPts,
-              postitle_percentage: pPct,
-              total_points: totalPts,
-              current_level: currentLvl,
+              total_experience_days: summary.total_experience_days,
+              total_leave_days: summary.total_leave_days,
+              bienios_count: summary.bienios_count,
+              bienio_points: summary.bienio_points,
+              next_bienio_date: summary.next_bienio_date,
+              training_points: summary.training_points,
+              postitle_percentage: summary.postitle_percentage,
+              total_points: summary.total_points,
+              current_level: summary.current_level,
             }), 6, 200);
 
             ok++;

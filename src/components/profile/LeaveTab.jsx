@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Clock, FileUp, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateEffectiveDays, calculateBienios, calculateBienioPoints, calculateNextBienioDate } from '@/components/calculations';
+import { calculateCareerSummary } from '@/utils/employeeScores';
 
 export default function LeaveTab({ employee }) {
   const queryClient = useQueryClient();
@@ -60,21 +60,26 @@ export default function LeaveTab({ employee }) {
   const createLeave = useMutation({
     mutationFn: async (data) => {
       await base44.entities.LeaveWithoutPay.create(data);
-      // Recalcular experiencia
-      const allPeriods = await base44.entities.ServicePeriod.filter({ employee_id: employee.id });
-      const allLeaves = await base44.entities.LeaveWithoutPay.filter({ employee_id: employee.id });
-      const tLeave = allLeaves.reduce((s, l) => s + (l.days_count || 0), 0) + data.days_count;
-      const eDays = calculateEffectiveDays(allPeriods, tLeave);
-      const b = calculateBienios(eDays);
-      const bp = calculateBienioPoints(employee.category, b);
-      const nbd = calculateNextBienioDate(allPeriods, tLeave, b);
+      const [allPeriods, allLeaves, allTrainings] = await Promise.all([
+        base44.entities.ServicePeriod.filter({ employee_id: employee.id }),
+        base44.entities.LeaveWithoutPay.filter({ employee_id: employee.id }),
+        base44.entities.Training.filter({ employee_id: employee.id }),
+      ]);
+      const summary = calculateCareerSummary(employee, {
+        servicePeriods: allPeriods,
+        leaves: allLeaves,
+        trainings: allTrainings,
+      });
       await base44.entities.Employee.update(employee.id, {
-        total_experience_days: eDays,
-        total_leave_days: tLeave,
-        bienios_count: b,
-        bienio_points: bp,
-        next_bienio_date: nbd,
-        total_points: bp + (employee.training_points || 0),
+        total_experience_days: summary.total_experience_days,
+        total_leave_days: summary.total_leave_days,
+        bienios_count: summary.bienios_count,
+        bienio_points: summary.bienio_points,
+        next_bienio_date: summary.next_bienio_date,
+        training_points: summary.training_points,
+        postitle_percentage: summary.postitle_percentage,
+        total_points: summary.total_points,
+        current_level: summary.current_level,
       });
     },
     onSuccess: () => {

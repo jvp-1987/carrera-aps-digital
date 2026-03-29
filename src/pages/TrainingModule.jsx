@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GraduationCap, Search, Lock, CheckCircle2, Clock as ClockIcon, XCircle, Plus, Upload } from 'lucide-react';
-import { isAnnualClosurePeriod, calculateTrainingPoints, getMaxTrainingPoints } from '@/components/calculations';
+import { isAnnualClosurePeriod, calculateCurrentLevel, calculateTrainingPoints } from '@/components/calculations';
+import { calculateTrainingSummary } from '@/utils/employeeScores';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -60,13 +61,16 @@ export default function TrainingModule() {
 
   const syncEmployeePoints = async (employeeId) => {
     const allTrainings = await base44.entities.Training.filter({ employee_id: employeeId, status: 'Validado' });
-    const totalTrainingPoints = allTrainings.reduce((s, t) => s + (t.calculated_points || 0), 0);
     const emp = await base44.entities.Employee.filter({ id: employeeId }).then(r => r[0]);
     if (emp) {
-      const maxPts = getMaxTrainingPoints(emp.category, emp.total_experience_days || 0);
-      const cappedPoints = Math.min(totalTrainingPoints, maxPts);
-      const totalPoints = (emp.bienio_points || 0) + cappedPoints;
-      await base44.entities.Employee.update(employeeId, { training_points: cappedPoints, total_points: totalPoints });
+      const summary = calculateTrainingSummary(emp, allTrainings);
+      const totalPoints = (emp.bienio_points || 0) + summary.trainingPoints;
+      await base44.entities.Employee.update(employeeId, {
+        training_points: summary.trainingPoints,
+        postitle_percentage: summary.postitlePercentage,
+        total_points: totalPoints,
+        current_level: calculateCurrentLevel(totalPoints, emp.category),
+      });
       queryClient.invalidateQueries({ queryKey: ['employees'] });
     }
   };

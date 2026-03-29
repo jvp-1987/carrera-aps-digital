@@ -172,10 +172,10 @@ function compareEmployee(excelRow, sysEmployee) {
     if (excelVal && sysVal && excelVal !== sysVal) {
       const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : excelVal;
       const displaySys   = field.key === 'birth_date' ? formatToDMY(sysVal)   : sysVal;
-      diffs[field.key] = { excel: displayExcel, system: displaySys, raw: systemPayload };
+      diffs[field.key] = { excel: displayExcel, system: displaySys, raw: systemPayload, debug: { rawSys, sysVal, rawExcel: String(rawExcel), excelVal } };
     } else if (excelVal && !sysVal) {
       const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : excelVal;
-      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true, raw: systemPayload };
+      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true, raw: systemPayload, debug: { rawSys, sysVal, rawExcel: String(rawExcel), excelVal } };
     }
   }
   return diffs;
@@ -239,13 +239,19 @@ function ResultRow({ result, onApply, isApplying, onCreate, isCreating }) {
 
       {hasDiffs && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {Object.entries(diffs).map(([fieldKey, { excel, system }]) => {
+          {Object.entries(diffs).map(([fieldKey, { excel, system, debug }]) => {
             const fieldDef = COMPARE_FIELDS.find(f => f.key === fieldKey);
             return (
               <div key={fieldKey} className="bg-white border border-amber-200 rounded-md p-2 text-xs">
                 <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{fieldDef?.label}</p>
-                <p className="text-slate-500 line-through">{system}</p>
-                <p className="text-amber-800 font-semibold">{excel}</p>
+                <div className="mb-1">
+                   <p className="text-[9px] text-red-400 font-mono">Sys: [{debug?.rawSys}] {'->'} [{debug?.sysVal}]</p>
+                   <p className="text-slate-500 line-through truncate">{system}</p>
+                </div>
+                <div>
+                   <p className="text-[9px] text-green-500 font-mono">Exc: [{debug?.rawExcel}] {'->'} [{debug?.excelVal}]</p>
+                   <p className="text-amber-800 font-semibold truncate">{excel}</p>
+                </div>
               </div>
             );
           })}

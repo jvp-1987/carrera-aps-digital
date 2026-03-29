@@ -90,10 +90,7 @@ function formatToDMY(isoStr) {
 const COMPARE_FIELDS = [
   { key: 'full_name',      label: 'Nombre',           normalize: norm, formatForSystem: val => String(val || '').trim() },
   { key: 'rut',            label: 'RUT',              normalize: normRut, formatForSystem: normRut },
-  { key: 'birth_date',     label: 'Fecha Nac.',       normalize: toISODate,      formatForSystem: val => {
-      const parsed = toISODate(val);
-      return parsed ? `${parsed} 12:00:00.000Z` : '';
-  }},
+  { key: 'birth_date',     label: 'Fecha Nac.',       normalize: toISODate,      formatForSystem: val => toISODate(val) },
   { key: 'category',       label: 'Categoría',        normalize: norm, formatForSystem: val => {
       const v = String(val || '').trim().toUpperCase();
       const match = v.match(/\b([A-F])\b/);
@@ -484,7 +481,7 @@ export default function ValidacionExcel() {
        excelValNat = excelValNat.toLowerCase() === 'chilena' ? 'Chilena' : String(r.excelRow.nationality || '').trim();
 
        const patch = {};
-       if (excelValBirth) patch.birth_date = `${excelValBirth} 12:00:00.000Z`;
+       if (excelValBirth) patch.birth_date = excelValBirth;
        if (excelValNat) patch.nationality = excelValNat;
 
        if (Object.keys(patch).length > 0) {
@@ -498,6 +495,32 @@ export default function ValidacionExcel() {
     setApplyingId(null);
     toast.success(`Sincronización de Emergencia finalizada: ${ok} actualizados, ${errs} errores.`);
     queryClient.invalidateQueries({ queryKey: ['employees-all-validation'] });
+  };
+
+  const runBackendDiagnostic = async () => {
+    const toUpdate = (results || []).filter(r => r.employee);
+    if (!toUpdate.length) return toast.error('Carga un Excel primero');
+    const r = toUpdate[0]; // Probar solo con el primero!
+
+    const excelValBirth = toISODate(r.excelRow.birth_date);
+    const excelValNat = norm(r.excelRow.nationality, true);
+    
+    toast.info(`Probando inyección directa al servidor para ${r.employee.full_name}...`);
+    try {
+        const patch = { birth_date: excelValBirth, nationality: excelValNat === 'chilena' ? 'Chilena' : excelValNat };
+        const response = await base44.entities.Employee.update(r.employee.id, patch);
+        
+        const success = response.birth_date === patch.birth_date;
+        window.alert(
+            `DIAGNOSTICO DEL SERVIDOR:\n\n` +
+            `ID Enviado: ${r.employee.id}\n` +
+            `Intento de guardar: ${JSON.stringify(patch)}\n` +
+            `Respuesta del Servidor guardó: ${JSON.stringify({ birth_date: response.birth_date, nationality: response.nationality })}\n\n` +
+            (success ? "¡EL SERVIDOR SÍ LO GUARDÓ AHORA!" : "💥 ERROR CRÍTICO: EL SERVIDOR DESCARTÓ LA FECHA. Tu base de datos Base44 probablemente tiene la columna mal configurada o corrompida.")
+        );
+    } catch (e) {
+        window.alert(`💥 EL SERVIDOR RECHAZÓ LA PETICIÓN POR COMPLETO:\n${e.message || e}`);
+    }
   };
 
   const handleApplyAll = async () => {
@@ -648,6 +671,9 @@ export default function ValidacionExcel() {
             <Button variant="outline" className="border-slate-300 text-slate-600" onClick={handleExportReport} disabled={applyingId === 'emergency'}>
               <Download className="w-4 h-4 mr-2" />
               Exportar Informe
+            </Button>
+            <Button variant="outline" className="border-indigo-300 text-indigo-700 bg-indigo-50 font-bold" onClick={runBackendDiagnostic}>
+              🧪 Diagnóstico Backend
             </Button>
             <Button variant="destructive" className="ml-auto" onClick={handleEmergencySync} disabled={applyingId === 'emergency'}>
               {applyingId === 'emergency' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <AlertTriangle className="w-4 h-4 mr-2" />}

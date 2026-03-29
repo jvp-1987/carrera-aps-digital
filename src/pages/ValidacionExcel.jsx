@@ -25,6 +25,10 @@ function normRut(v) {
   return (v ?? '').toString().replace(/\./g, '').replace(/-/g, '').replace(/\s/g, '').toUpperCase();
 }
 
+function isISODateString(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+}
+
 // Convierte cualquier valor de fecha a formato 'YYYY-MM-DD' de forma ultra-robusta
 function toISODate(v) {
   if (!v && v !== 0) return '';
@@ -76,7 +80,31 @@ function toISODate(v) {
     return `${fullYear}-${dmyShort[2].padStart(2,'0')}-${dmyShort[1].padStart(2,'0')}`;
   }
 
-  return s;
+  return '';
+}
+
+function sanitizeEmployeeValue(field, value) {
+  const text = String(value ?? '').trim();
+  if (!text) return undefined;
+
+  if (field === 'birth_date') {
+    const iso = toISODate(value);
+    return isISODateString(iso) ? iso : undefined;
+  }
+
+  if (field === 'category') {
+    const match = text.toUpperCase().match(/\b([A-F])\b/);
+    return match ? match[1] : undefined;
+  }
+
+  if (field === 'rut') return normRut(text);
+  if (field === 'position' || field === 'profession') return text.toUpperCase();
+  if (field === 'nationality') {
+    const normalized = norm(text, true);
+    return normalized.toLowerCase() === 'chilena' ? 'Chilena' : normalized;
+  }
+
+  return text;
 }
 
 // Formatea 'YYYY-MM-DD' a 'DD/MM/YYYY' para visualización
@@ -382,10 +410,15 @@ export default function ValidacionExcel() {
     setApplyingId(employeeId);
     const patch = {};
     for (const [key, { raw }] of Object.entries(diffs)) {
-      patch[key] = raw;
+      const sanitized = sanitizeEmployeeValue(key, raw);
+      if (sanitized !== undefined) patch[key] = sanitized;
     }
     try {
       if (!employeeId) throw new Error('ID de funcionario no válido');
+      if (Object.keys(patch).length === 0) {
+        if (!isBulk) toast.info('No hay cambios válidos para aplicar');
+        return;
+      }
       await base44.entities.Employee.update(employeeId, patch);
       if (!isBulk) toast.success('Datos actualizados correctamente');
       
@@ -409,14 +442,25 @@ export default function ValidacionExcel() {
     const rutKey = normRut(excelRow.rut);
     setCreatingIds(prev => new Set(prev).add(rutKey));
     try {
+      const category = sanitizeEmployeeValue('category', excelRow.category);
+      const rut = sanitizeEmployeeValue('rut', excelRow.rut);
+      const fullName = sanitizeEmployeeValue('full_name', excelRow.full_name);
+
+      if (!rut || !fullName || !category) {
+        throw new Error('Faltan campos mínimos (RUT, Nombre o Categoría) para crear');
+      }
+
       const newEmp = await base44.entities.Employee.create({
         ...excelRow,
-        rut: normRut(excelRow.rut), // Normalizamos RUT SIEMPRE al crear para el sistema
-        position: (excelRow.position || '').toUpperCase(),
-        birth_date: excelRow.birth_date || '',
-        nationality: excelRow.nationality
-          ? ((['chile','chilena','chileno','chilenos','chilenas','cl'].includes((excelRow.nationality).toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''))) ? 'Chilena' : excelRow.nationality)
-          : 'Chilena',
+        full_name: fullName,
+        rut,
+        category,
+        position: sanitizeEmployeeValue('position', excelRow.position) || '',
+        profession: sanitizeEmployeeValue('profession', excelRow.profession) || '',
+        birth_date: sanitizeEmployeeValue('birth_date', excelRow.birth_date) || '',
+        nationality: sanitizeEmployeeValue('nationality', excelRow.nationality) || 'Chilena',
+        contract_type: sanitizeEmployeeValue('contract_type', excelRow.contract_type) || '',
+        department: sanitizeEmployeeValue('department', excelRow.department) || '',
         status: 'Activo',
         current_level: 15,
         total_experience_days: 0,

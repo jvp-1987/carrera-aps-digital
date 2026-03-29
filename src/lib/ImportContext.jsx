@@ -55,7 +55,7 @@ function normalizeDateString(dateVal) {
       return date.toISOString().split('T')[0];
     }
   }
-  return str;
+  return '';
 }
 
 function normalizeNationality(val) {

@@ -63,7 +63,7 @@ function normalizeDateString(dateVal) {
       return date.toISOString().split('T')[0];
     }
   }
-  return str;
+  return '';
 }
 
 function normalizeNationality(val) {
@@ -372,6 +372,9 @@ function validateEmployee(emp) {
   if (!VALID_CATEGORIES.includes(emp.category)) errors.push(`Categoría inválida "${emp.category}"`);
   if (!emp.current_level || emp.current_level < 1 || emp.current_level > 15)
     errors.push(`Nivel inválido "${emp.current_level}"`);
+  if (emp.birth_date && !/^\d{4}-\d{2}-\d{2}$/.test(String(emp.birth_date))) {
+    errors.push(`Fecha nacimiento inválida "${emp.birth_date}"`);
+  }
   return errors;
 }
 

@@ -64,7 +64,7 @@ function getDaysFromPeriod(p) {
   if (p.start_date) {
     const start = new Date(p.start_date);
     const end = p.end_date ? new Date(p.end_date) : new Date();
-    const days = Math.floor((end - start) / 86400000) + 1;
+      const days = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
     if (days > 0) return days;
   }
   return p.days_count || 0;
@@ -80,7 +80,7 @@ export function calculateEffectiveDays(servicePeriods, leaveDays) {
 export function calculateNextBienioDate(servicePeriods, totalLeaveDays, currentBienios) {
   // Sort periods by start date to find the chronological start
   if (!servicePeriods || servicePeriods.length === 0) return null;
-  const sorted = [...servicePeriods].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  const sorted = [...servicePeriods].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
   const firstStart = sorted[0].start_date;
   if (!firstStart) return null;
 
@@ -270,7 +270,7 @@ export function daysUntilClosure() {
     // Already closed; next closure is next year
     return null;
   }
-  return Math.ceil((closure - today) / (1000 * 60 * 60 * 24));
+    return Math.ceil((closure.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function formatDaysToYMD(totalDays) {

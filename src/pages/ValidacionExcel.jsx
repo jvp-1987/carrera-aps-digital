@@ -56,13 +56,17 @@ function toISODate(v) {
   const s = String(v).trim();
   if (!s) return '';
 
+  // Extraer sólo la porción YYYY-MM-DD si viene en formato timestamp o con Z
+  const isoTime = s.match(/^(\d{4}-\d{2}-\d{2})[T\s]/);
+  if (isoTime) return isoTime[1];
+
   // 3. Formato DD/MM/YYYY o DD-MM-YYYY
-  const dmy = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  const dmy = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
   if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
 
   // 4. Formato YYYY-MM-DD
-  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (ymd) return s;
+  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (ymd) return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
 
   // 5. Formato DD/MM/YY (años cortos)
   const dmyShort = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2})$/);

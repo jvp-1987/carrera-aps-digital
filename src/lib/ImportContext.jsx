@@ -34,6 +34,10 @@ function normalizeDateString(dateVal) {
   }
   const str = String(dateVal).trim();
   if (!str) return '';
+  
+  const isoTime = str.match(/^(\d{4}-\d{2}-\d{2})[T\s]/);
+  if (isoTime) return isoTime[1];
+
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
   const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (match) return `${match[3]}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`;

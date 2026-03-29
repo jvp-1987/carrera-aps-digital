@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import * as XLSX from 'xlsx';
 import { useEmployees } from '@/hooks/useEmployees';
 import { logger } from '@/lib/logger';
 import StatsCards from '@/components/employees/StatsCards';
@@ -79,29 +80,120 @@ export default function Employees() {
     return groups;
   }, [filteredEmployees]);
 
-  const handleExportExcel = () => {
-    const headers = ['Nombre','RUT','Categoría','Cargo','Establecimiento','Estado','Tipo Contrato','Nivel Actual','Puntos Capacitación','Puntaje Total','Bienios'];
-    const rows = filteredEmployees.map(emp => [
-      emp.full_name || '',
-      emp.rut || '',
-      emp.category || '',
-      emp.position || '',
-      emp.department || '',
-      emp.status || '',
-      emp.contract_type || '',
-      emp.current_level || '',
-      emp.training_points || '0',
-      emp.total_points || '',
-      emp.bienios_count || '',
-    ]);
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `funcionarios_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const formatDate = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value.slice(0, 10);
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 10);
+  };
+
+  const safeSheetName = (employee, index) => {
+    const base = (employee.full_name || `Funcionario_${index + 1}`)
+      .replace(/[\\/*?:\[\]]/g, ' ')
+      .trim();
+    const short = base.slice(0, 31);
+    return short || `Funcionario_${index + 1}`;
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const employeeIds = filteredEmployees.map((employee) => employee.id).filter(Boolean);
+      const [allPeriods, allTrainings, allLeaves] = await Promise.all([
+        base44.entities.ServicePeriod.list('-created_date', 5000),
+        base44.entities.Training.list('-created_date', 5000),
+        base44.entities.LeaveWithoutPay.list('-created_date', 5000),
+      ]);
+
+      const periodsByEmployee = {};
+      const trainingsByEmployee = {};
+      const leavesByEmployee = {};
+
+      allPeriods
+        .filter((period) => employeeIds.includes(period.employee_id))
+        .forEach((period) => {
+          if (!periodsByEmployee[period.employee_id]) periodsByEmployee[period.employee_id] = [];
+          periodsByEmployee[period.employee_id].push(period);
+        });
+
+      allTrainings
+        .filter((training) => employeeIds.includes(training.employee_id))
+        .forEach((training) => {
+          if (!trainingsByEmployee[training.employee_id]) trainingsByEmployee[training.employee_id] = [];
+          trainingsByEmployee[training.employee_id].push(training);
+        });
+
+      allLeaves
+        .filter((leave) => employeeIds.includes(leave.employee_id))
+        .forEach((leave) => {
+          if (!leavesByEmployee[leave.employee_id]) leavesByEmployee[leave.employee_id] = [];
+          leavesByEmployee[leave.employee_id].push(leave);
+        });
+
+      const workbook = XLSX.utils.book_new();
+
+      filteredEmployees.forEach((employee, index) => {
+        const rows = [];
+
+        rows[0] = [employee.full_name || `Funcionario ${index + 1}`];
+        rows[1] = [
+          `Cat. ${employee.category || ''} · Nivel ${employee.current_level || ''} · ${employee.total_points || 0} pts · ${employee.bienios_count || 0} bienios`,
+        ];
+        rows[2] = ['RUT', employee.rut || '', '', 'Cargo', employee.position || ''];
+        rows[3] = ['Profesión', employee.profession || '', '', 'Universidad', employee.universidad || ''];
+        rows[4] = ['Fecha Nacimiento', formatDate(employee.birth_date), '', 'Nacionalidad', employee.nationality || ''];
+        rows[5] = ['Tipo Contrato', employee.contract_type || '', '', 'Establecimiento', employee.department || ''];
+
+        rows[7] = ['Experiencia'];
+        rows[8] = ['Establecimiento', 'Fecha inicio', 'Término', 'Días'];
+
+        const periods = periodsByEmployee[employee.id] || [];
+        periods.forEach((period, periodIndex) => {
+          rows[9 + periodIndex] = [
+            `${period.institution || ''}${period.period_type ? ` (${period.period_type})` : ''}`.trim(),
+            formatDate(period.start_date),
+            formatDate(period.end_date),
+            period.days_count || '',
+          ];
+        });
+
+        const trainingHeaderRow = 10 + periods.length;
+        rows[trainingHeaderRow] = ['Capacitación'];
+        rows[trainingHeaderRow + 1] = ['Institución – Nombre curso', 'Horas', 'Nota', 'Nivel técnico', 'Fecha'];
+
+        const trainings = trainingsByEmployee[employee.id] || [];
+        trainings.forEach((training, trainingIndex) => {
+          rows[trainingHeaderRow + 2 + trainingIndex] = [
+            `${training.institution || ''}${training.course_name ? ` – ${training.course_name}` : ''}`.trim(),
+            training.hours ?? '',
+            training.grade ?? '',
+            training.technical_level || '',
+            formatDate(training.completion_date),
+          ];
+        });
+
+        const leaveHeaderRow = trainingHeaderRow + 3 + trainings.length;
+        rows[leaveHeaderRow] = ['Permisos sin goce'];
+        rows[leaveHeaderRow + 1] = ['Motivo/Resolución', 'Fecha inicio', 'Término', 'Días'];
+
+        const leaves = leavesByEmployee[employee.id] || [];
+        leaves.forEach((leave, leaveIndex) => {
+          rows[leaveHeaderRow + 2 + leaveIndex] = [
+            leave.resolution_number || leave.reason || '',
+            formatDate(leave.start_date),
+            formatDate(leave.end_date),
+            leave.days_count || '',
+          ];
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(employee, index));
+      });
+
+      XLSX.writeFile(workbook, `funcionarios_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      logger.error('Error exporting employees workbook', err);
+    }
   };
 
   // Handlers

@@ -142,8 +142,8 @@ function parseExcelRow(row) {
     rut:           get('rut', 'run', 'cedula', 'id'),
     birth_date:    getDate('fecha nacimiento', 'nacimiento', 'fecha de nacimiento', 'fecha_nacimiento', 'fechanacimiento', 'f. nacimiento', 'fec. nacimiento', 'f.nacimiento', 'fec. nac', 'f. nac', 'dob', 'date of birth'),
     category:      get('categoria', 'categoría', 'cat', 'estamento', 'nivel cat'),
-    position:      get('cargo', 'puesto', 'especialidad', 'funcion', 'función', 'profesion', 'profesión', ' Profesión'),
-    profession:    get('profesion', 'profesión', ' Profesión', 'titulo', 'título', 'prof', 'cargo', 'puesto'),
+    position:      get('cargo', 'puesto', 'especialidad', 'funcion', 'función', 'profesion', 'profesión', ' Profesión').toUpperCase(),
+    profession:    get('profesion', 'profesión', ' Profesión', 'titulo', 'título', 'prof', 'cargo', 'puesto').toUpperCase(),
     department:    get('establecimiento', 'departamento', 'unidad', 'cesfam', 'consultorio', 'lugar de trabajo', 'centro'),
     nationality:   get('nacionalidad', 'nacionalidad funcionario', 'nacionalidad func.', 'nac.', 'nac', 'nacion', 'pais', 'país', 'nationality', 'pais de origen'),
     contract_type: get('tipo contrato', 'contrato', 'tipo de contrato', 'tipo_contrato', 'calidad juridica', 'calidad jurídica', 'vinculo'),
@@ -500,26 +500,39 @@ export default function ValidacionExcel() {
   const runBackendDiagnostic = async () => {
     const toUpdate = (results || []).filter(r => r.employee);
     if (!toUpdate.length) return toast.error('Carga un Excel primero');
-    const r = toUpdate[0]; // Probar solo con el primero!
+    const r = toUpdate[0]; 
 
     const excelValBirth = toISODate(r.excelRow.birth_date);
     const excelValNat = norm(r.excelRow.nationality, true);
     
-    toast.info(`Probando inyección directa al servidor para ${r.employee.full_name}...`);
+    toast.info(`Iniciando diagnóstico profundo para ${r.employee.full_name}...`);
     try {
-        const patch = { birth_date: excelValBirth, nationality: excelValNat === 'chilena' ? 'Chilena' : excelValNat };
+        const patch = { 
+            birth_date: excelValBirth, 
+            nationality: excelValNat === 'chilena' ? 'Chilena' : excelValNat,
+            profession: String(r.excelRow.profession || '').toUpperCase()
+        };
+        
+        // 1. Ver qué tiene el objeto r.employee originalmente
+        const originalKeys = Object.keys(r.employee).join(', ');
+        
+        // 2. Intentar el update
         const response = await base44.entities.Employee.update(r.employee.id, patch);
         
-        const success = response.birth_date === patch.birth_date;
+        // 3. Ver qué devolvió el servidor en realidad
+        const responseKeys = Object.keys(response || {}).join(', ');
+        
         window.alert(
-            `DIAGNOSTICO DEL SERVIDOR:\n\n` +
-            `ID Enviado: ${r.employee.id}\n` +
-            `Intento de guardar: ${JSON.stringify(patch)}\n` +
-            `Respuesta del Servidor guardó: ${JSON.stringify({ birth_date: response.birth_date, nationality: response.nationality })}\n\n` +
-            (success ? "¡EL SERVIDOR SÍ LO GUARDÓ AHORA!" : "💥 ERROR CRÍTICO: EL SERVIDOR DESCARTÓ LA FECHA. Tu base de datos Base44 probablemente tiene la columna mal configurada o corrompida.")
+            `DIAGNOSTICO PROFUNDO:\n\n` +
+            `1. CAMPOS EN EL REGISTRO ACTUAL: [${originalKeys}]\n\n` +
+            `2. INTENTO DE GUARDAR: ${JSON.stringify(patch)}\n\n` +
+            `3. RESPUESTA DEL SERVIDOR (KEYS): [${responseKeys}]\n\n` +
+            `4. CONTENIDO DE LA RESPUESTA: ${JSON.stringify(response)}\n\n` +
+            `-----------------------------------\n` +
+            (response.birth_date === excelValBirth ? "✅ ¡EL SERVIDOR DICE QUE GUARDÓ BIEN!" : "❌ EL VALOR NO COINCIDE EN LA RESPUESTA.")
         );
     } catch (e) {
-        window.alert(`💥 EL SERVIDOR RECHAZÓ LA PETICIÓN POR COMPLETO:\n${e.message || e}`);
+        window.alert(`💥 ERROR DE PROTOCOLO:\n${e.message || e}`);
     }
   };
 

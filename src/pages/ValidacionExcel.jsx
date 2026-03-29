@@ -84,15 +84,29 @@ function formatToDMY(isoStr) {
 
 // ── Campos a comparar ─────────────────────────────────────────
 const COMPARE_FIELDS = [
-  { key: 'full_name',      label: 'Nombre',           normalize: norm },
-  { key: 'rut',            label: 'RUT',              normalize: normRut },
-  { key: 'birth_date',     label: 'Fecha Nacimiento', normalize: toISODate },
-  { key: 'category',       label: 'Categoría',        normalize: norm },
-  { key: 'position',       label: 'Cargo',            normalize: val => norm(val).toUpperCase() },
-  { key: 'profession',     label: 'Profesión',        normalize: val => norm(val).toUpperCase() },
-  { key: 'department',     label: 'Establecimiento',  normalize: norm },
-  { key: 'nationality',    label: 'Nacionalidad',     normalize: val => norm(val, true) },
-  { key: 'contract_type',  label: 'Tipo Contrato',    normalize: norm },
+  { key: 'full_name',      label: 'Nombre',           normalize: norm, formatForSystem: val => String(val || '').trim() },
+  { key: 'rut',            label: 'RUT',              normalize: normRut, formatForSystem: normRut },
+  { key: 'birth_date',     label: 'Fecha Nacimiento', normalize: toISODate, formatForSystem: toISODate },
+  { key: 'category',       label: 'Categoría',        normalize: norm, formatForSystem: val => {
+      const v = String(val || '').trim().toUpperCase();
+      const match = v.match(/\b([A-F])\b/);
+      return match ? match[1] : v;
+  } },
+  { key: 'position',       label: 'Cargo',            normalize: val => norm(val).toUpperCase(), formatForSystem: val => String(val || '').trim().toUpperCase() },
+  { key: 'profession',     label: 'Profesión',        normalize: val => norm(val).toUpperCase(), formatForSystem: val => String(val || '').trim().toUpperCase() },
+  { key: 'department',     label: 'Establecimiento',  normalize: norm, formatForSystem: val => String(val || '').trim() },
+  { key: 'nationality',    label: 'Nacionalidad',     normalize: val => norm(val, true), formatForSystem: val => {
+      const n = norm(val, true);
+      return n.toLowerCase() === 'chilena' ? 'Chilena' : String(val || '').trim();
+  } },
+  { key: 'contract_type',  label: 'Tipo Contrato',    normalize: norm, formatForSystem: val => {
+      const v = norm(val);
+      if (v.includes('fijo')) return 'Plazo Fijo';
+      if (v.includes('planta') || v.includes('titular')) return 'Planta';
+      if (v.includes('honorario')) return 'Honorarios';
+      if (v.includes('reemplazo')) return 'Reemplazo';
+      return String(val || '').trim();
+  } },
 ];
 
 // ── Intenta mapear columnas del Excel al esquema interno ───────
@@ -142,6 +156,7 @@ function compareEmployee(excelRow, sysEmployee) {
     const rawSys   = sysEmployee?.[field.key] ?? '';
     const excelVal = field.normalize(rawExcel);
     const sysVal   = field.normalize(rawSys);
+    const systemPayload = field.formatForSystem ? field.formatForSystem(rawExcel) : excelVal;
 
     // DEBUG: Solo loggear si son campos problemáticos
     if (field.key === 'birth_date' || field.key === 'nationality') {
@@ -153,10 +168,10 @@ function compareEmployee(excelRow, sysEmployee) {
     if (excelVal && sysVal && excelVal !== sysVal) {
       const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : excelVal;
       const displaySys   = field.key === 'birth_date' ? formatToDMY(sysVal)   : sysVal;
-      diffs[field.key] = { excel: displayExcel, system: displaySys, raw: excelVal };
+      diffs[field.key] = { excel: displayExcel, system: displaySys, raw: systemPayload };
     } else if (excelVal && !sysVal) {
       const displayExcel = field.key === 'birth_date' ? formatToDMY(excelVal) : excelVal;
-      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true, raw: excelVal };
+      diffs[field.key] = { excel: displayExcel, system: '(vacío)', missing: true, raw: systemPayload };
     }
   }
   return diffs;

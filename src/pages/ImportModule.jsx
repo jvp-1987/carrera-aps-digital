@@ -98,20 +98,37 @@ function parseHeaderString(header) {
 }
 
 // ── Parser de hoja formato CarreraFuncionaria ────────────────────
-// Estructura:
-//   Row 0: "Cat. X · Nivel Y · Z pts · $ W · N bienios"
-//   Row 1: "DATOS PERSONALES"
-//   Row 2: "RUT" | rut | | "Cargo" | cargo
-//   Row 3: "Profesión" | prof | | "Universidad" | univ
-//   Row 4: "Fecha Nacimiento" | fecha | | "Edad" | edad
-//   ... más pares clave-valor hasta llegar a sección de experiencia o capacitación
+// Soporta dos formatos:
+// 
+// FORMATO ORIGINAL:
+//   Row 0: Nombre del funcionario
+//   Row 1: "Cat. X · Nivel Y · Z pts · $ W · N bienios"
+//   Row 2+: pares clave-valor (RUT | rut | | Cargo | cargo)
+//   Secciones: EXPERIENCIA | CAPACITACIÓN
 //
-// Secciones de experiencia y capacitación se detectan por sus headers.
+// FORMATO TABULAR (nuevo):
+//   Row 0: "DATOS PERSONALES"
+//   Row 1: Headers (RUT | Nombre | Categoría | Nivel | Cargo | Fecha Ingreso | Tipo Contrato)
+//   Row 2: Datos en fila única
+//   Secciones: EXPERIENCIA con "Tipo Periodo" | Fecha Inicio | Fecha Fin | Institución
 function parseCarreraSheet(sheet, sheetName) {
   if (!sheet || !sheet['!ref']) return null;
   const range = XLSX.utils.decode_range(sheet['!ref']);
   const maxRow = range.e.r;
 
+  // Detectar formato
+  const firstCell = cellStr(sheet, 0, 0);
+  const isTabularFormat = firstCell && /DATOS\s+PERSONALES|PERSONAL DATA/i.test(firstCell);
+
+  if (isTabularFormat) {
+    return parseCarreraSheetTabular(sheet, sheetName, range, maxRow);
+  } else {
+    return parseCarreraSheetOriginal(sheet, sheetName, range, maxRow);
+  }
+}
+
+// Parsea formato original (pares clave-valor)
+function parseCarreraSheetOriginal(sheet, sheetName, range, maxRow) {
   // Fila 1 (r=0): Nombre del funcionario
   let fullNameFromSheet = '';
   for (let c = 0; c <= range.e.c; c++) {
@@ -119,13 +136,13 @@ function parseCarreraSheet(sheet, sheetName) {
     if (v) { fullNameFromSheet = v; break; }
   }
 
-  // Fila 2 (r=1): Encabezado de carrera "Cat. X · Nivel Y · Z pts · N bienios"
+  // Fila 2 (r=1): Encabezado de carrera
   let headerStr = '';
   for (let c = 0; c <= range.e.c; c++) {
     const v = cellStr(sheet, c, 1);
     if (v && /Cat\.\s*[A-Fa-f]/i.test(v)) { headerStr = v; break; }
   }
-  // Fallback: buscar en filas siguientes si no estaba en fila 2
+  // Fallback
   if (!headerStr) {
     for (let r = 2; r <= Math.min(9, maxRow); r++) {
       for (let c = 0; c <= range.e.c; c++) {
@@ -137,10 +154,10 @@ function parseCarreraSheet(sheet, sheetName) {
   }
   const headerData = parseHeaderString(headerStr);
 
-  // Helper: normaliza texto para comparación
+  // Helper: normaliza texto
   const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-  // Helper: lee toda una fila como string normalizado para detectar secciones
+  // Helper: lee fila entera como string
   const rowText = (r) => {
     let t = '';
     for (let c = 0; c <= range.e.c; c++) t += ' ' + norm(cellStr(sheet, c, r));
@@ -165,7 +182,6 @@ function parseCarreraSheet(sheet, sheetName) {
     const c3 = norm(cellStr(sheet, 3, r));
     const c4 = cellStr(sheet, 4, r);
 
-    // Detectar inicio de sección: solo en columna 0 para evitar falsos positivos con nombres de cursos
     const c0raw = cellStr(sheet, 0, r);
     const c0normRaw = norm(c0raw);
     const isExpRow = !inExperiencia && /experiencia|periodos\s*de\s*servicio|servicio\s*anterior|historia\s*laboral/i.test(c0normRaw) && !/sin\s*goce/i.test(c0normRaw);
@@ -213,7 +229,6 @@ function parseCarreraSheet(sheet, sheetName) {
     }
 
     if (inExperiencia) {
-      // Primera fila no vacía = headers de la tabla
       if (!expHeaders && rt.trim().length > 2) {
         expHeaders = {};
         for (let c = 0; c <= range.e.c; c++) {
@@ -230,13 +245,10 @@ function parseCarreraSheet(sheet, sheetName) {
           }
           return '';
         };
-        // El establecimiento contiene el tipo en paréntesis: "CESFAM X (Reemplazo)"
         const establecimiento = findCol('establecimiento', 'institucion', 'instituc', 'lugar');
         if (!establecimiento) continue;
-        // Saltar fila TOTAL
         if (norm(establecimiento).includes('total')) continue;
 
-        // Extraer tipo de período desde los paréntesis
         const tipoMatch = establecimiento.match(/\(([^)]+)\)/);
         const tipoRaw = tipoMatch ? tipoMatch[1].toLowerCase() : '';
         let tipo_periodo = 'Planta';
@@ -245,7 +257,6 @@ function parseCarreraSheet(sheet, sheetName) {
         else if (tipoRaw.includes('contrata') || tipoRaw.includes('contrato') || tipoRaw.includes('plazo')) tipo_periodo = 'Plazo Fijo';
         else if (tipoRaw.includes('titular') || tipoRaw.includes('planta')) tipo_periodo = 'Planta';
 
-        // Institución = establecimiento sin el paréntesis del tipo
         const institucion = establecimiento.replace(/\s*\([^)]*\)\s*$/, '').trim();
 
         experienciaRows.push({
@@ -276,9 +287,7 @@ function parseCarreraSheet(sheet, sheetName) {
           }
           return '';
         };
-        // Primero intentar columna con nombre de curso/actividad, luego la primera columna no vacía
         let cursoRaw = findCol('curso', 'actividad', 'nombre', 'institucion');
-        // Fallback: primera celda no vacía de la fila
         if (!cursoRaw) {
           for (let c = 0; c <= range.e.c; c++) {
             const v = cellStr(sheet, c, r);
@@ -287,7 +296,6 @@ function parseCarreraSheet(sheet, sheetName) {
         }
         if (!cursoRaw) continue;
 
-        // Ignorar filas que son parte del encabezado de carrera (bienios, categoría, totales)
         const cursoNorm = norm(cursoRaw);
         if (
           cursoNorm.includes('bienio') ||
@@ -299,7 +307,6 @@ function parseCarreraSheet(sheet, sheetName) {
           cursoNorm === 'capacitación'
         ) continue;
 
-        // Separar institución y nombre del curso si hay " – " o " - "
         const partes = cursoRaw.split(/\s+[–-]\s+/);
         const institucion = partes.length > 1 ? partes[0].trim() : '';
         const nombre_curso = partes.length > 1 ? partes.slice(1).join(' – ').trim() : cursoRaw.trim();
@@ -322,12 +329,10 @@ function parseCarreraSheet(sheet, sheetName) {
       continue;
     }
 
-    // Sección de datos personales: pares clave-valor
     if (c0) kvData[c0] = c1;
     if (c3) kvData[c3] = c4;
   }
 
-  // Mapear datos personales
   const getKV = (...keys) => {
     for (const k of keys) {
       const kNorm = norm(k);
@@ -357,10 +362,207 @@ function parseCarreraSheet(sheet, sheetName) {
     universidad,
     birth_date: birthDateNormalized,
     birth_date_raw: birthDateRaw,
+    header_raw: headerStr,
     nationality: normalizeNationality(nationality),
     experiencia: experienciaRows,
     capacitacion: capacitacionRows,
     permisos: permisosRows,
+  };
+}
+
+// Parsea formato tabular (nuevo: headers horizontales)
+function parseCarreraSheetTabular(sheet, sheetName, range, maxRow) {
+  // Fila 0 (r=0): "DATOS PERSONALES" (label)
+  // Fila 1 (r=1): headers (RUT | Nombre | Categoría | Nivel | Cargo | Fecha Ingreso | Tipo Contrato)
+  // Fila 2 (r=2): datos reales
+
+  const headers = [];
+  for (let c = 0; c <= range.e.c; c++) {
+    const h = cellStr(sheet, c, 1);
+    headers.push((h || '').trim().toUpperCase());
+  }
+
+  const getCol = (label) => {
+    const idx = headers.findIndex((h) => h === label.toUpperCase());
+    return idx >= 0 ? cellStr(sheet, idx, 2) : '';
+  };
+
+  const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const rowText = (r) => {
+    let t = '';
+    for (let c = 0; c <= range.e.c; c++) t += ' ' + norm(cellStr(sheet, c, r));
+    return t;
+  };
+
+  let experienciaRows = [];
+  let capacitacionRows = [];
+  let permisosRows = [];
+  let inExperiencia = false;
+  let inCapacitacion = false;
+  let inPermisos = false;
+  let expHeaders = null;
+  let capHeaders = null;
+  let permHeaders = null;
+
+  for (let r = 3; r <= maxRow; r++) {
+    const rt = rowText(r);
+    const c0raw = cellStr(sheet, 0, r);
+    const c0normRaw = norm(c0raw);
+
+    if (c0normRaw === 'experiencia' || (c0normRaw.includes('experiencia') && !c0normRaw.includes('sin'))) {
+      inExperiencia = true;
+      inCapacitacion = false;
+      inPermisos = false;
+      expHeaders = null;
+      continue;
+    }
+    if (c0normRaw.includes('capacitaci') || c0normRaw.includes('entrenamiento')) {
+      inCapacitacion = true;
+      inExperiencia = false;
+      inPermisos = false;
+      capHeaders = null;
+      continue;
+    }
+    if (c0normRaw.includes('permiso') && c0normRaw.includes('sin') && c0normRaw.includes('goce')) {
+      inPermisos = true;
+      inExperiencia = false;
+      inCapacitacion = false;
+      permHeaders = null;
+      continue;
+    }
+
+    if (inPermisos) {
+      if (!permHeaders && rt.trim().length > 2) {
+        permHeaders = {};
+        for (let c = 0; c <= range.e.c; c++) {
+          const h = norm(cellStr(sheet, c, r));
+          if (h) permHeaders[h] = c;
+        }
+        continue;
+      }
+      if (permHeaders) {
+        const findCol = (...keys) => {
+          for (const k of keys) {
+            const found = Object.keys(permHeaders).find((h) => h.includes(k));
+            if (found !== undefined) return cellStr(sheet, permHeaders[found], r);
+          }
+          return '';
+        };
+        const startDate = normalizeDateString(findCol('inicio', 'desde', 'fecha inicio'));
+        if (!startDate) continue;
+        permisosRows.push({
+          start_date: startDate,
+          end_date: normalizeDateString(findCol('termino', 'término', 'fin', 'hasta')),
+          days_count: parseInt(findCol('dia', 'días')) || 0,
+          resolution_number: findCol('resol', 'documento', 'motivo'),
+        });
+      }
+      continue;
+    }
+
+    if (inExperiencia) {
+      if (!expHeaders && rt.trim().length > 2) {
+        expHeaders = {};
+        for (let c = 0; c <= range.e.c; c++) {
+          const h = norm(cellStr(sheet, c, r));
+          if (h) expHeaders[h] = c;
+        }
+        continue;
+      }
+      if (expHeaders) {
+        const findCol = (...keys) => {
+          for (const k of keys) {
+            const found = Object.keys(expHeaders).find((h) => h.includes(k));
+            if (found !== undefined) return cellStr(sheet, expHeaders[found], r);
+          }
+          return '';
+        };
+        const tipo = findCol('tipo', 'period');
+        const inicio = findCol('inicio', 'desde', 'fecha inicio');
+        if (!tipo && !inicio) continue;
+
+        experienciaRows.push({
+          tipo_periodo: tipo || 'Planta',
+          institucion: findCol('instituc', 'establecimiento', 'lugar'),
+          fecha_inicio: normalizeDateString(inicio),
+          fecha_fin: normalizeDateString(findCol('fin', 'termino', 'término', 'hasta')),
+          dias: findCol('dias', 'días'),
+        });
+      }
+      continue;
+    }
+
+    if (inCapacitacion) {
+      if (!capHeaders && rt.trim().length > 2) {
+        capHeaders = {};
+        for (let c = 0; c <= range.e.c; c++) {
+          const h = norm(cellStr(sheet, c, r));
+          if (h) capHeaders[h] = c;
+        }
+        continue;
+      }
+      if (capHeaders) {
+        const findCol = (...keys) => {
+          for (const k of keys) {
+            const found = Object.keys(capHeaders).find((h) => h.includes(k));
+            if (found !== undefined) return cellStr(sheet, capHeaders[found], r);
+          }
+          return '';
+        };
+        let cursoRaw = findCol('curso', 'nombre', 'actividad', 'instituc');
+        if (!cursoRaw) {
+          for (let c = 0; c <= range.e.c; c++) {
+            const v = cellStr(sheet, c, r);
+            if (v) { cursoRaw = v; break; }
+          }
+        }
+        if (!cursoRaw) continue;
+
+        const cursoNorm = norm(cursoRaw);
+        if (cursoNorm.includes('bienio') || cursoNorm.includes('total') || cursoNorm.includes('puntaje') || /^cat\.\s*[a-f]/i.test(cursoRaw)) continue;
+
+        const partes = cursoRaw.split(/\s+[–-]\s+/);
+        const institucion = partes.length > 1 ? partes[0].trim() : '';
+        const nombre_curso = partes.length > 1 ? partes.slice(1).join(' – ').trim() : cursoRaw.trim();
+
+        if (!nombre_curso) continue;
+        capacitacionRows.push({
+          nombre_curso,
+          institucion,
+          horas: findCol('hora'),
+          nota: findCol('nota', 'calificacion'),
+          nivel_tecnico: findCol('nivel', 'tipo'),
+          fecha: normalizeDateString(findCol('fecha', 'fin', 'termino')),
+          puntaje: findCol('punto', 'pts', 'puntaje'),
+        });
+      }
+      continue;
+    }
+  }
+
+  const rut = normalizeRUT(getCol('RUT'));
+  const nombre = getCol('NOMBRE');
+  const categoria = (getCol('CATEGORÍA') || getCol('CATEGORIA')).toUpperCase();
+  const nivelRaw = getCol('NIVEL');
+  const nivel = Number.parseInt(nivelRaw, 10);
+
+  return {
+    full_name: nombre || (sheetName ? sheetName.trim() : ''),
+    rut,
+    position: (getCol('CARGO') || '').toUpperCase(),
+    category: categoria,
+    current_level: Number.isInteger(nivel) && nivel >= 1 && nivel <= 15 ? nivel : null,
+    profession: '',
+    universidad: '',
+    birth_date: null,
+    birth_date_raw: '',
+    header_raw: `Cat. ${categoria} · Nivel ${nivelRaw}`,
+    nationality: '',
+    experiencia: experienciaRows,
+    capacitacion: capacitacionRows,
+    permisos: permisosRows,
+    bienios_count: null,
+    total_points: null,
   };
 }
 
